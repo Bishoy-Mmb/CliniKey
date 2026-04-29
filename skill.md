@@ -68,17 +68,18 @@ All commands require `$env:PYTHONIOENCODING='utf-8'` prefix on Windows PowerShel
 .specify/
 ├── memory/
 │   └── constitution.md          ← project principles (created once)
-├── specs/
-│   └── {NNN}-{feature-slug}/
-│       ├── spec.md              ← functional specification
-│       ├── plan.md              ← technical implementation plan
-│       ├── tasks.md             ← task breakdown
-│       ├── data-model.md        ← entity/relationship model
-│       └── contracts/           ← API specs, DTOs
-├── scripts/                     ← SpecKit helper scripts
+├── scripts/                     ← SpecKit helper scripts (create-new-feature, etc.)
 ├── templates/                   ← spec/plan/task templates
 ├── workflows/                   ← SDD workflow definitions
 └── extensions/                  ← installed extensions
+
+specs/                           ← lives at repo root, NOT inside .specify/
+└── {NNN}-{feature-slug}/
+    ├── spec.md                  ← functional specification
+    ├── plan.md                  ← technical implementation plan
+    ├── tasks.md                 ← task breakdown
+    ├── data-model.md            ← entity/relationship model
+    └── contracts/               ← API specs, DTOs
 ```
 
 ### 2.5 When to Use SDD vs. Manual Code
