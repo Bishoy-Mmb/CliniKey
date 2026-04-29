@@ -1,0 +1,6 @@
+@CliniKey.API_HostAddress = http://localhost:5041
+
+GET {{CliniKey.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

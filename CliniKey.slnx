@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CliniKey.API/CliniKey.API.csproj" />
+    <Project Path="src/CliniKey.Application/CliniKey.Application.csproj" />
+    <Project Path="src/CliniKey.Domain/CliniKey.Domain.csproj" />
+    <Project Path="src/CliniKey.Infrastructure/CliniKey.Infrastructure.csproj" />
+    <Project Path="src/CliniKey.SharedKernel/CliniKey.SharedKernel.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CliniKey.Tests/CliniKey.Tests.csproj" />
+  </Folder>
+</Solution>
