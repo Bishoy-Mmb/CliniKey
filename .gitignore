@@ -28,5 +28,5 @@ appsettings.*.json
 *.pfx
 *.key
 
-## educational
-execution summary
+## AI Tools
+.gemini/
