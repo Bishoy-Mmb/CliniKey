@@ -444,6 +444,14 @@ Adding unlisted packages requires explicit justification.
 - Max line length: 120 chars (soft).
 - Empty scaffold folders: keep with `.gitkeep` if needed.
 
+## 19. Execution Summary Records (ESR)
+
+- **Purpose**: To document the rigorous engineering process, architectural decisions, and task completions, acting as official proof of systematic SDD execution.
+- **Location**: `execution summary/` directory at the repository root.
+- **Naming Convention**: `ESR-{SpecNumber}-{Descriptor}.md` (e.g., `ESR-001-Phase1-2-Foundation.md` or `ESR-001-SystemDesignDefense.md`).
+- **When to Create/Update**: After completing a major phase defined in `tasks.md`, or when defending significant architectural choices.
+- **Format Requirements**: Must include Branch, Build/Test Status, completed task table, Code Quality Assessment, and explicit Next Steps.
+
 ---
 
 > **End of standards.** This document governs all code generation.
