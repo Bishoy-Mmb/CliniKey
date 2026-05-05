@@ -15,7 +15,7 @@ public sealed class ToothCode : ValueObject
     {
         if (!IsValidToothCode(value))
         {
-            return Result.Failure<ToothCode>(new Error("ToothCode.Invalid", "Invalid FDI tooth code."));
+            return Result.Failure<ToothCode>(Error.Validation("ToothCode.Invalid", "Invalid FDI tooth code."));
         }
 
         return new ToothCode(value);

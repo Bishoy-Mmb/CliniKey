@@ -18,12 +18,12 @@ public sealed partial class PhoneNumber : ValueObject
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            return Result.Failure<PhoneNumber>(new Error("PhoneNumber.Empty", "Phone number is required."));
+            return Result.Failure<PhoneNumber>(Error.Validation("PhoneNumber.Empty", "Phone number is required."));
         }
 
         if (!EgyptianMobileRegex().IsMatch(value))
         {
-            return Result.Failure<PhoneNumber>(new Error("PhoneNumber.InvalidFormat", "Phone number must be a valid Egyptian mobile number (11 digits, starting with 010, 011, 012, or 015)."));
+            return Result.Failure<PhoneNumber>(Error.Validation("PhoneNumber.InvalidFormat", "Phone number must be a valid Egyptian mobile number (11 digits, starting with 010, 011, 012, or 015)."));
         }
 
         return new PhoneNumber(value);

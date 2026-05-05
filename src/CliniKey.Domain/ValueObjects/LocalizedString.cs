@@ -17,7 +17,7 @@ public sealed class LocalizedString : ValueObject
     {
         if (string.IsNullOrWhiteSpace(en))
         {
-            return Result.Failure<LocalizedString>(new Error("LocalizedString.EmptyEnglish", "English value is required."));
+            return Result.Failure<LocalizedString>(Error.Validation("LocalizedString.EmptyEnglish", "English value is required."));
         }
 
         return new LocalizedString(en, string.IsNullOrWhiteSpace(ar) ? null : ar);

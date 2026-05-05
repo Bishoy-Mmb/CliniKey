@@ -17,12 +17,12 @@ public sealed class PatientName : ValueObject
     {
         if (string.IsNullOrWhiteSpace(firstName) || firstName.Length > 100)
         {
-            return Result.Failure<PatientName>(new Error("PatientName.InvalidFirstName", "First name is required and cannot exceed 100 characters."));
+            return Result.Failure<PatientName>(Error.Validation("PatientName.InvalidFirstName", "First name is required and cannot exceed 100 characters."));
         }
 
         if (string.IsNullOrWhiteSpace(lastName) || lastName.Length > 100)
         {
-            return Result.Failure<PatientName>(new Error("PatientName.InvalidLastName", "Last name is required and cannot exceed 100 characters."));
+            return Result.Failure<PatientName>(Error.Validation("PatientName.InvalidLastName", "Last name is required and cannot exceed 100 characters."));
         }
 
         return new PatientName(firstName, lastName);

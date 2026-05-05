@@ -17,12 +17,12 @@ public sealed class Money : ValueObject
     {
         if (amount < 0)
         {
-            return Result.Failure<Money>(new Error("Money.NegativeAmount", "Amount cannot be negative."));
+            return Result.Failure<Money>(Error.Validation("Money.NegativeAmount", "Amount cannot be negative."));
         }
 
         if (string.IsNullOrWhiteSpace(currency))
         {
-            return Result.Failure<Money>(new Error("Money.InvalidCurrency", "Currency is required."));
+            return Result.Failure<Money>(Error.Validation("Money.InvalidCurrency", "Currency is required."));
         }
 
         return new Money(amount, currency);
