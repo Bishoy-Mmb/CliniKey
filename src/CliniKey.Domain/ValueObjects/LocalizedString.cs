@@ -23,12 +23,9 @@ public sealed class LocalizedString : ValueObject
         return new LocalizedString(en, string.IsNullOrWhiteSpace(ar) ? null : ar);
     }
 
-    protected override IEnumerable<object> GetAtomicValues()
+    protected override IEnumerable<object?> GetAtomicValues()
     {
         yield return En;
-        if (Ar is not null)
-        {
-            yield return Ar;
-        }
+        yield return Ar;
     }
 }
