@@ -39,6 +39,21 @@ public class MoneyTests
         result.Value.Currency.Should().Be("EGP");
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData(null)]
+    public void Create_InvalidCurrency_ReturnsFailure(string invalidCurrency)
+    {
+        // Act
+        var result = Money.Create(100m, invalidCurrency);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Type.Should().Be(ErrorType.Validation);
+        result.Error.Code.Should().Be("Money.InvalidCurrency");
+    }
+
     [Fact]
     public void Create_NegativeAmount_ReturnsFailure()
     {

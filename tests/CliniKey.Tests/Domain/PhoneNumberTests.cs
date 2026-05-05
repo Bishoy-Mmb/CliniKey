@@ -50,4 +50,19 @@ public class PhoneNumberTests
         result.Error.Type.Should().Be(ErrorType.Validation);
         result.Error.Code.Should().Be("PhoneNumber.InvalidFormat");
     }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData(null)]
+    public void Create_EmptyOrNull_ReturnsFailure(string invalidNumber)
+    {
+        // Act
+        var result = PhoneNumber.Create(invalidNumber);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Type.Should().Be(ErrorType.Validation);
+        result.Error.Code.Should().Be("PhoneNumber.Empty");
+    }
 }

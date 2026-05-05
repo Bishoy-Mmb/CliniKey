@@ -38,9 +38,18 @@ public class ToothCodeTests
 
     [Theory]
     [InlineData(9)]   // Less than 11
+    [InlineData(10)]  // Lower boundary failure
     [InlineData(19)]  // Invalid permanent tooth in quadrant 1
+    [InlineData(20)]  // Boundary failure
     [InlineData(29)]  // Invalid permanent tooth in quadrant 2
+    [InlineData(30)]  // Boundary failure
+    [InlineData(40)]  // Boundary failure
+    [InlineData(50)]  // Boundary failure
     [InlineData(56)]  // Invalid deciduous tooth in quadrant 5
+    [InlineData(60)]  // Boundary failure
+    [InlineData(70)]  // Boundary failure
+    [InlineData(80)]  // Boundary failure
+    [InlineData(90)]  // Boundary failure
     [InlineData(91)]  // Invalid quadrant
     [InlineData(99)]  // Random invalid code
     public void Create_InvalidFDICode_ReturnsFailure(int invalidCode)

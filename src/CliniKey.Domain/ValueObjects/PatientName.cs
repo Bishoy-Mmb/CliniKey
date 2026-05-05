@@ -28,7 +28,7 @@ public sealed class PatientName : ValueObject
         return new PatientName(firstName, lastName);
     }
 
-    protected override IEnumerable<object> GetAtomicValues()
+    protected override IEnumerable<object?> GetAtomicValues()
     {
         yield return FirstName;
         yield return LastName;

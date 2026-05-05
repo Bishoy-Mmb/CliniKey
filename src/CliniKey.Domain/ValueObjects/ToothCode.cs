@@ -44,7 +44,7 @@ public sealed class ToothCode : ValueObject
         return false;
     }
 
-    protected override IEnumerable<object> GetAtomicValues()
+    protected override IEnumerable<object?> GetAtomicValues()
     {
         yield return Value;
     }

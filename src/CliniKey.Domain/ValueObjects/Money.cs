@@ -28,7 +28,7 @@ public sealed class Money : ValueObject
         return new Money(amount, currency);
     }
 
-    protected override IEnumerable<object> GetAtomicValues()
+    protected override IEnumerable<object?> GetAtomicValues()
     {
         yield return Amount;
         yield return Currency;

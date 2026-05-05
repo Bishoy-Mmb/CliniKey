@@ -29,7 +29,7 @@ public sealed partial class PhoneNumber : ValueObject
         return new PhoneNumber(value);
     }
 
-    protected override IEnumerable<object> GetAtomicValues()
+    protected override IEnumerable<object?> GetAtomicValues()
     {
         yield return Value;
     }
