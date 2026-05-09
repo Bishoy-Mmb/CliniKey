@@ -433,6 +433,7 @@ Adding unlisted packages requires explicit justification.
 
 - Branches: `feature/CK-{ticket}-slug`, `fix/CK-{ticket}-slug`
 - Commits: Conventional Commits — `feat:`, `fix:`, `chore:`, `refactor:`, `docs:`, `test:`
+- **Pre-Commit Rule**: Before committing, you MUST create a fully detailed Execution Summary Record (ESR) documenting what is done and included in this commit in detail.
 - Every PR must include at least one test.
 
 ---

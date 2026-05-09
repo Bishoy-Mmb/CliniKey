@@ -1,8 +1,38 @@
+using CliniKey.API.Middleware;
+using CliniKey.Application.Behaviors;
+using CliniKey.Infrastructure;
+using FluentValidation;
+using Microsoft.AspNetCore.Mvc;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+
+// Register MediatR and Pipeline Behaviors
+builder.Services.AddMediatR(config =>
+{
+    config.RegisterServicesFromAssembly(typeof(CliniKey.Application.Abstractions.Messaging.ICommand).Assembly);
+    config.AddOpenBehavior(typeof(LoggingBehavior<,>));
+    config.AddOpenBehavior(typeof(ValidationBehavior<,>));
+});
+
+// Register FluentValidation
+builder.Services.AddValidatorsFromAssembly(typeof(CliniKey.Application.Abstractions.Messaging.ICommand).Assembly);
+
+// Register Infrastructure
+builder.Services.AddInfrastructure(builder.Configuration);
+
+// Register Middleware
+builder.Services.AddTransient<GlobalExceptionMiddleware>();
+builder.Services.AddTransient<TenantResolutionMiddleware>();
+
+// Suppress default ModelState validation to use our custom ValidationBehavior
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.SuppressModelStateInvalidFilter = true;
+});
 
 var app = builder.Build();
 
@@ -12,30 +42,12 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+app.UseMiddleware<GlobalExceptionMiddleware>();
+
 app.UseHttpsRedirection();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+app.UseMiddleware<TenantResolutionMiddleware>();
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+app.MapControllers();
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

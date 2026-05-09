@@ -7,8 +7,8 @@ namespace CliniKey.SharedKernel.Primitives;
 public abstract class AggregateRoot<TId> : Entity<TId>
     where TId : notnull
 {
-    public DateTime CreatedAtUtc { get; protected init; } = DateTime.UtcNow;
-    public DateTime? UpdatedAtUtc { get; protected set; }
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAtUtc { get; set; }
 
     protected void MarkUpdated() => UpdatedAtUtc = DateTime.UtcNow;
 }

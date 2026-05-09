@@ -1,10 +1,12 @@
+using CliniKey.SharedKernel.Interfaces;
+
 namespace CliniKey.SharedKernel.Primitives;
 
 /// <summary>
 /// Base class for all domain entities. Uses a strongly-typed ID to prevent
 /// primitive obsession and accidental ID mix-ups across aggregate boundaries.
 /// </summary>
-public abstract class Entity<TId> : IEquatable<Entity<TId>>
+public abstract class Entity<TId> : IEquatable<Entity<TId>>, IHasDomainEvents
     where TId : notnull
 {
     public TId Id { get; protected init; } = default!;
