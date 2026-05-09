@@ -22,10 +22,10 @@ public class PatientNameTests
     [InlineData("")]
     [InlineData(" ")]
     [InlineData(null)]
-    public void Create_InvalidFirstName_ReturnsFailure(string invalidFirstName)
+    public void Create_InvalidFirstName_ReturnsFailure(string? invalidFirstName)
     {
         // Act
-        var result = PatientName.Create(invalidFirstName, "Hassan");
+        var result = PatientName.Create(invalidFirstName!, "Hassan");
 
         // Assert
         result.IsFailure.Should().BeTrue();
@@ -50,10 +50,10 @@ public class PatientNameTests
     [InlineData("")]
     [InlineData(" ")]
     [InlineData(null)]
-    public void Create_InvalidLastName_ReturnsFailure(string invalidLastName)
+    public void Create_InvalidLastName_ReturnsFailure(string? invalidLastName)
     {
         // Act
-        var result = PatientName.Create("Ahmed", invalidLastName);
+        var result = PatientName.Create("Ahmed", invalidLastName!);
 
         // Assert
         result.IsFailure.Should().BeTrue();

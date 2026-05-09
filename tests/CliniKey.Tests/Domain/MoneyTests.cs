@@ -43,10 +43,10 @@ public class MoneyTests
     [InlineData("")]
     [InlineData(" ")]
     [InlineData(null)]
-    public void Create_InvalidCurrency_ReturnsFailure(string invalidCurrency)
+    public void Create_InvalidCurrency_ReturnsFailure(string? invalidCurrency)
     {
         // Act
-        var result = Money.Create(100m, invalidCurrency);
+        var result = Money.Create(100m, invalidCurrency!);
 
         // Assert
         result.IsFailure.Should().BeTrue();

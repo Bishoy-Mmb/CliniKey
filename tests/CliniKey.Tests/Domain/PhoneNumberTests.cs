@@ -55,10 +55,10 @@ public class PhoneNumberTests
     [InlineData("")]
     [InlineData(" ")]
     [InlineData(null)]
-    public void Create_EmptyOrNull_ReturnsFailure(string invalidNumber)
+    public void Create_EmptyOrNull_ReturnsFailure(string? invalidNumber)
     {
         // Act
-        var result = PhoneNumber.Create(invalidNumber);
+        var result = PhoneNumber.Create(invalidNumber!);
 
         // Assert
         result.IsFailure.Should().BeTrue();

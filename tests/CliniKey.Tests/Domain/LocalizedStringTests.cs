@@ -34,10 +34,10 @@ public class LocalizedStringTests
     [InlineData("")]
     [InlineData(" ")]
     [InlineData(null)]
-    public void Create_InvalidEnglish_ReturnsFailure(string invalidEnglish)
+    public void Create_InvalidEnglish_ReturnsFailure(string? invalidEnglish)
     {
         // Act
-        var result = LocalizedString.Create(invalidEnglish);
+        var result = LocalizedString.Create(invalidEnglish!);
 
         // Assert
         result.IsFailure.Should().BeTrue();
