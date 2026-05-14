@@ -32,14 +32,11 @@ public sealed class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<
 
         if (errors.Any())
         {
-            // For simplicity, we just return the first error as a Validation error
-            // Or you can create a custom ValidationError type that holds all of them
             var error = errors.First();
             var validationError = Error.Validation(
                 error.PropertyName,
                 error.ErrorMessage);
 
-            // Since TResponse is guaranteed to be a Result, we can create a generic failure
             var resultType = typeof(TResponse);
             if (resultType.IsGenericType && resultType.GetGenericTypeDefinition() == typeof(Result<>))
             {

@@ -64,7 +64,6 @@ public sealed class Patient : AggregateRoot<Guid>, IAuditableEntity, ISoftDeleta
         if (Phone != newPhone)
         {
             Phone = newPhone;
-            // Optionally raise a PatientPhoneUpdatedEvent here
         }
     }
 
@@ -79,7 +78,6 @@ public sealed class Patient : AggregateRoot<Guid>, IAuditableEntity, ISoftDeleta
         {
             IsDeleted = true;
             DeletedAtUtc = DateTime.UtcNow;
-            // Optionally raise a PatientDeletedEvent here
         }
     }
 }

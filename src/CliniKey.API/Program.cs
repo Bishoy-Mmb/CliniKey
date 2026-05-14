@@ -6,11 +6,9 @@ using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
-// Register MediatR and Pipeline Behaviors
 builder.Services.AddMediatR(config =>
 {
     config.RegisterServicesFromAssembly(typeof(CliniKey.Application.Abstractions.Messaging.ICommand).Assembly);
@@ -18,17 +16,13 @@ builder.Services.AddMediatR(config =>
     config.AddOpenBehavior(typeof(ValidationBehavior<,>));
 });
 
-// Register FluentValidation
 builder.Services.AddValidatorsFromAssembly(typeof(CliniKey.Application.Abstractions.Messaging.ICommand).Assembly);
 
-// Register Infrastructure
 builder.Services.AddInfrastructure(builder.Configuration);
 
-// Register Middleware
 builder.Services.AddTransient<GlobalExceptionMiddleware>();
 builder.Services.AddTransient<TenantResolutionMiddleware>();
 
-// Suppress default ModelState validation to use our custom ValidationBehavior
 builder.Services.Configure<ApiBehaviorOptions>(options =>
 {
     options.SuppressModelStateInvalidFilter = true;
@@ -36,7 +30,6 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
