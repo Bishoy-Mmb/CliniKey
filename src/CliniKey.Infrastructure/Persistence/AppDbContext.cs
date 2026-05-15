@@ -12,6 +12,10 @@ public sealed class AppDbContext : DbContext
     }
 
     public DbSet<Patient> Patients { get; set; } = null!;
+    public DbSet<Appointment> Appointments { get; set; } = null!;
+    public DbSet<Dentist> Dentists { get; set; } = null!;
+    public DbSet<Clinic> Clinics { get; set; } = null!;
+    public DbSet<ClinicDentist> ClinicDentists { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

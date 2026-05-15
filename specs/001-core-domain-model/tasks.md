@@ -117,41 +117,41 @@
 
 ### Domain (US2)
 
-- [ ] T050 [US2] Create `Dentist` aggregate root in `src/CliniKey.Domain/Entities/Dentist.cs` — cross-tenant, factory `Create(fullName, specialization, licenseNumber)`
-- [ ] T051 [P] [US2] Create `Clinic` aggregate root in `src/CliniKey.Domain/Entities/Clinic.cs` — tenant entity, `SchemaName`, `IsActive`
-- [ ] T052 [P] [US2] Create `ClinicDentist` join entity in `src/CliniKey.Domain/Entities/ClinicDentist.cs` — `ClinicId` + `DentistId`
-- [ ] T053 [US2] Create `Appointment` aggregate root in `src/CliniKey.Domain/Entities/Appointment.cs` — sealed, factory `Schedule()`, behaviors `CheckIn()`, `Start()`, `Complete()`, `Cancel()`, status state machine validation, concurrency token
-- [ ] T054 [P] [US2] Create `AppointmentScheduledEvent` in `src/CliniKey.Domain/Events/AppointmentScheduledEvent.cs`
-- [ ] T055 [P] [US2] Create `AppointmentStatusChangedEvent` in `src/CliniKey.Domain/Events/AppointmentStatusChangedEvent.cs`
-- [ ] T056 [P] [US2] Create `AppointmentErrors` in `src/CliniKey.Domain/Errors/AppointmentErrors.cs` — `TimeConflict`, `InvalidTransition`, `NotFound`, `PastDate`
-- [ ] T057 [P] [US2] Create `IAppointmentRepository` in `src/CliniKey.Domain/Repositories/IAppointmentRepository.cs` — `GetByIdAsync`, `HasConflictAsync(dentistId, start, end)`, `Add`
-- [ ] T058 [P] [US2] Create `IDentistRepository` in `src/CliniKey.Domain/Repositories/IDentistRepository.cs`
+- [X] T050 [US2] Create `Dentist` aggregate root in `src/CliniKey.Domain/Entities/Dentist.cs` — cross-tenant, factory `Create(fullName, specialization, licenseNumber)`
+- [X] T051 [P] [US2] Create `Clinic` aggregate root in `src/CliniKey.Domain/Entities/Clinic.cs` — tenant entity, `SchemaName`, `IsActive`
+- [X] T052 [P] [US2] Create `ClinicDentist` join entity in `src/CliniKey.Domain/Entities/ClinicDentist.cs` — `ClinicId` + `DentistId`
+- [X] T053 [US2] Create `Appointment` aggregate root in `src/CliniKey.Domain/Entities/Appointment.cs` — sealed, factory `Schedule()`, behaviors `CheckIn()`, `Start()`, `Complete()`, `Cancel()`, status state machine validation, concurrency token
+- [X] T054 [P] [US2] Create `AppointmentScheduledEvent` in `src/CliniKey.Domain/Events/AppointmentScheduledEvent.cs`
+- [X] T055 [P] [US2] Create `AppointmentStatusChangedEvent` in `src/CliniKey.Domain/Events/AppointmentStatusChangedEvent.cs`
+- [X] T056 [P] [US2] Create `AppointmentErrors` in `src/CliniKey.Domain/Errors/AppointmentErrors.cs` — `TimeConflict`, `InvalidTransition`, `NotFound`, `PastDate`
+- [X] T057 [P] [US2] Create `IAppointmentRepository` in `src/CliniKey.Domain/Repositories/IAppointmentRepository.cs` — `GetByIdAsync`, `HasConflictAsync(dentistId, start, end)`, `Add`
+- [X] T058 [P] [US2] Create `IDentistRepository` in `src/CliniKey.Domain/Repositories/IDentistRepository.cs`
 
 ### Application (US2)
 
-- [ ] T059 [US2] Create `AppointmentResponse` DTO in `src/CliniKey.Application/DTOs/AppointmentResponse.cs`
-- [ ] T060 [US2] Create `ScheduleAppointmentCommand` + Handler + Validator in `src/CliniKey.Application/Features/Appointments/Commands/ScheduleAppointment/` — checks conflict via repo, creates Appointment
-- [ ] T061 [US2] Create `ChangeAppointmentStatusCommand` + Handler in `src/CliniKey.Application/Features/Appointments/Commands/ChangeStatus/` — validates state transition
-- [ ] T062 [US2] Create `GetAppointmentByIdQuery` + Handler in `src/CliniKey.Application/Features/Appointments/Queries/GetAppointmentById/`
-- [ ] T063 [US2] Create `ListAppointmentsQuery` + Handler in `src/CliniKey.Application/Features/Appointments/Queries/ListAppointments/` — filter by date, dentistId, patientId
+- [X] T059 [US2] Create `AppointmentResponse` DTO in `src/CliniKey.Application/DTOs/AppointmentResponse.cs`
+- [X] T060 [US2] Create `ScheduleAppointmentCommand` + Handler + Validator in `src/CliniKey.Application/Features/Appointments/Commands/ScheduleAppointment/` — checks conflict via repo, creates Appointment
+- [X] T061 [US2] Create `ChangeAppointmentStatusCommand` + Handler in `src/CliniKey.Application/Features/Appointments/Commands/ChangeStatus/` — validates state transition
+- [X] T062 [US2] Create `GetAppointmentByIdQuery` + Handler in `src/CliniKey.Application/Features/Appointments/Queries/GetAppointmentById/`
+- [X] T063 [US2] Create `ListAppointmentsQuery` + Handler in `src/CliniKey.Application/Features/Appointments/Queries/ListAppointments/` — filter by date, dentistId, patientId
 
 ### Infrastructure (US2)
 
-- [ ] T064 [P] [US2] Create `AppointmentConfiguration` in `src/CliniKey.Infrastructure/Persistence/Configurations/AppointmentConfiguration.cs` — concurrency token (`xmin`), indexes on (DentistId, StartTime)
-- [ ] T065 [P] [US2] Create `DentistConfiguration` in `src/CliniKey.Infrastructure/Persistence/Configurations/DentistConfiguration.cs` — unique LicenseNumber
-- [ ] T066 [P] [US2] Create `ClinicConfiguration` in `src/CliniKey.Infrastructure/Persistence/Configurations/ClinicConfiguration.cs`
-- [ ] T067 [US2] Create `AppointmentRepository` in `src/CliniKey.Infrastructure/Persistence/Repositories/AppointmentRepository.cs` — `HasConflictAsync` with overlap query
-- [ ] T068 [US2] Create `DentistRepository` in `src/CliniKey.Infrastructure/Persistence/Repositories/DentistRepository.cs`
-- [ ] T069 [US2] Register new DbSets and repos in `AppDbContext` and `DependencyInjection.cs`
+- [X] T064 [P] [US2] Create `AppointmentConfiguration` in `src/CliniKey.Infrastructure/Persistence/Configurations/AppointmentConfiguration.cs` — concurrency token (`xmin`), indexes on (DentistId, StartTime)
+- [X] T065 [P] [US2] Create `DentistConfiguration` in `src/CliniKey.Infrastructure/Persistence/Configurations/DentistConfiguration.cs` — unique LicenseNumber
+- [X] T066 [P] [US2] Create `ClinicConfiguration` in `src/CliniKey.Infrastructure/Persistence/Configurations/ClinicConfiguration.cs`
+- [X] T067 [US2] Create `AppointmentRepository` in `src/CliniKey.Infrastructure/Persistence/Repositories/AppointmentRepository.cs` — `HasConflictAsync` with overlap query
+- [X] T068 [US2] Create `DentistRepository` in `src/CliniKey.Infrastructure/Persistence/Repositories/DentistRepository.cs`
+- [X] T069 [US2] Register new DbSets and repos in `AppDbContext` and `DependencyInjection.cs`
 
 ### API (US2)
 
-- [ ] T070 [US2] Create `AppointmentsController` in `src/CliniKey.API/Controllers/AppointmentsController.cs` — POST, GET/{id}, GET (list), PATCH/{id}/status
+- [X] T070 [US2] Create `AppointmentsController` in `src/CliniKey.API/Controllers/AppointmentsController.cs` — POST, GET/{id}, GET (list), PATCH/{id}/status
 
 ### Tests (US2)
 
-- [ ] T071 [US2] Unit tests for `Appointment` in `tests/CliniKey.Tests/Domain/AppointmentTests.cs` — Schedule_ValidInput_ReturnsAppointment, CheckIn_FromScheduled_ChangesStatus, CheckIn_FromCompleted_ReturnsFailure, state machine exhaustive
-- [ ] T072 [US2] Unit tests for `ScheduleAppointmentCommandHandler` in `tests/CliniKey.Tests/Application/ScheduleAppointmentCommandHandlerTests.cs` — Handle_NoConflict_Succeeds, Handle_OverlappingSlot_ReturnsTimeConflict
+- [X] T071 [US2] Unit tests for `Appointment` in `tests/CliniKey.Tests/Domain/AppointmentTests.cs` — Schedule_ValidInput_ReturnsAppointment, CheckIn_FromScheduled_ChangesStatus, CheckIn_FromCompleted_ReturnsFailure, state machine exhaustive
+- [X] T072 [US2] Unit tests for `ScheduleAppointmentCommandHandler` in `tests/CliniKey.Tests/Application/ScheduleAppointmentCommandHandlerTests.cs` — Handle_NoConflict_Succeeds, Handle_OverlappingSlot_ReturnsTimeConflict
 
 **Checkpoint**: Appointment scheduling works end-to-end with conflict detection. ✅
 
