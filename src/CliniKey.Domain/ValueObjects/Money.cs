@@ -13,6 +13,8 @@ public sealed class Money : ValueObject
         Currency = currency;
     }
 
+    public static readonly Money Zero = new(0m, "EGP");
+
     public static Result<Money> Create(decimal amount, string currency = "EGP")
     {
         if (amount < 0)
@@ -26,6 +28,18 @@ public sealed class Money : ValueObject
         }
 
         return new Money(amount, currency);
+    }
+
+    public Result<Money> Add(Money other)
+    {
+        if (!string.Equals(Currency, other.Currency, StringComparison.OrdinalIgnoreCase))
+        {
+            return Result.Failure<Money>(Error.Validation(
+                "Money.CurrencyMismatch",
+                $"Cannot add {other.Currency} to {Currency}. All amounts must use the same currency."));
+        }
+
+        return new Money(Amount + other.Amount, Currency);
     }
 
     protected override IEnumerable<object?> GetAtomicValues()

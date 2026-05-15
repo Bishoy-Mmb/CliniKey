@@ -91,4 +91,35 @@ public class MoneyTests
         money1.Should().NotBe(money3);
         (money1 != money2).Should().BeTrue();
     }
+
+    [Fact]
+    public void Add_SameCurrency_ReturnsSummedAmount()
+    {
+        // Arrange
+        var money1 = Money.Create(500m, "EGP").Value;
+        var money2 = Money.Create(300m, "EGP").Value;
+
+        // Act
+        var result = money1.Add(money2);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Amount.Should().Be(800m);
+        result.Value.Currency.Should().Be("EGP");
+    }
+
+    [Fact]
+    public void Add_DifferentCurrency_ReturnsFailure()
+    {
+        // Arrange
+        var egp = Money.Create(5000m, "EGP").Value;
+        var usd = Money.Create(200m, "USD").Value;
+
+        // Act
+        var result = egp.Add(usd);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Money.CurrencyMismatch");
+    }
 }

@@ -165,31 +165,31 @@
 
 ### Domain (US3)
 
-- [ ] T073 [US3] Create `TreatmentPlan` aggregate root in `src/CliniKey.Domain/Entities/TreatmentPlan.cs` — factory `Create(patientId, dentistId, items)`, behaviors `Approve()`, `StartItem(itemId)`, `CompleteItem(itemId)`, `Cancel()`, computed `TotalEstimatedCost` from items
-- [ ] T074 [P] [US3] Create `TreatmentItem` child entity in `src/CliniKey.Domain/Entities/TreatmentItem.cs` — `ToothCode`, `ProcedureName`, `Money EstimatedCost`, `TreatmentItemStatus`
-- [ ] T075 [P] [US3] Create `TreatmentPlanApprovedEvent` in `src/CliniKey.Domain/Events/TreatmentPlanApprovedEvent.cs`
-- [ ] T076 [P] [US3] Create `TreatmentPlanErrors` in `src/CliniKey.Domain/Errors/TreatmentPlanErrors.cs` — `EmptyPlan`, `InvalidToothCode`, `InvalidTransition`, `NotFound`
-- [ ] T077 [P] [US3] Create `ITreatmentPlanRepository` in `src/CliniKey.Domain/Repositories/ITreatmentPlanRepository.cs`
+- [X] T073 [US3] Create `TreatmentPlan` aggregate root in `src/CliniKey.Domain/Entities/TreatmentPlan.cs` — factory `Create(patientId, dentistId, items)`, behaviors `Approve()`, `StartItem(itemId)`, `CompleteItem(itemId)`, `Cancel()`, computed `TotalEstimatedCost` from items
+- [X] T074 [P] [US3] Create `TreatmentItem` child entity in `src/CliniKey.Domain/Entities/TreatmentItem.cs` — `ToothCode`, `ProcedureName`, `Money EstimatedCost`, `TreatmentItemStatus`
+- [X] T075 [P] [US3] Create `TreatmentPlanApprovedEvent` in `src/CliniKey.Domain/Events/TreatmentPlanApprovedEvent.cs`
+- [X] T076 [P] [US3] Create `TreatmentPlanErrors` in `src/CliniKey.Domain/Errors/TreatmentPlanErrors.cs` — `EmptyPlan`, `InvalidToothCode`, `InvalidTransition`, `NotFound`
+- [X] T077 [P] [US3] Create `ITreatmentPlanRepository` in `src/CliniKey.Domain/Repositories/ITreatmentPlanRepository.cs`
 
 ### Application (US3)
 
-- [ ] T078 [US3] Create `TreatmentPlanResponse` DTO in `src/CliniKey.Application/DTOs/TreatmentPlanResponse.cs` — includes nested `TreatmentItemResponse` list
-- [ ] T079 [US3] Create `CreateTreatmentPlanCommand` + Handler + Validator in `src/CliniKey.Application/Features/TreatmentPlans/Commands/CreateTreatmentPlan/` — validates all tooth codes, creates plan with items
-- [ ] T080 [US3] Create `ApproveTreatmentPlanCommand` + Handler in `src/CliniKey.Application/Features/TreatmentPlans/Commands/ApproveTreatmentPlan/`
-- [ ] T081 [US3] Create `GetTreatmentPlanByIdQuery` + Handler in `src/CliniKey.Application/Features/TreatmentPlans/Queries/GetTreatmentPlanById/`
+- [X] T078 [US3] Create `TreatmentPlanResponse` DTO in `src/CliniKey.Application/DTOs/TreatmentPlanResponse.cs` — includes nested `TreatmentItemResponse` list
+- [X] T079 [US3] Create `CreateTreatmentPlanCommand` + Handler + Validator in `src/CliniKey.Application/Features/TreatmentPlans/Commands/CreateTreatmentPlan/` — validates all tooth codes, creates plan with items
+- [X] T080 [US3] Create `ApproveTreatmentPlanCommand` + Handler in `src/CliniKey.Application/Features/TreatmentPlans/Commands/ApproveTreatmentPlan/`
+- [X] T081 [US3] Create `GetTreatmentPlanByIdQuery` + Handler in `src/CliniKey.Application/Features/TreatmentPlans/Queries/GetTreatmentPlanById/`
 
 ### Infrastructure (US3)
 
-- [ ] T082 [US3] Create `TreatmentPlanConfiguration` in `src/CliniKey.Infrastructure/Persistence/Configurations/TreatmentPlanConfiguration.cs` — owns many TreatmentItems, ToothCode value conversion, Money conversion
-- [ ] T083 [US3] Create `TreatmentPlanRepository` in `src/CliniKey.Infrastructure/Persistence/Repositories/TreatmentPlanRepository.cs` — includes Items on load
+- [X] T082 [US3] Create `TreatmentPlanConfiguration` in `src/CliniKey.Infrastructure/Persistence/Configurations/TreatmentPlanConfiguration.cs` — owns many TreatmentItems, ToothCode value conversion, Money conversion
+- [X] T083 [US3] Create `TreatmentPlanRepository` in `src/CliniKey.Infrastructure/Persistence/Repositories/TreatmentPlanRepository.cs` — includes Items on load
 
 ### API (US3)
 
-- [ ] T084 [US3] Create `TreatmentPlansController` in `src/CliniKey.API/Controllers/TreatmentPlansController.cs` — POST, GET/{id}, PATCH/{id}/approve
+- [X] T084 [US3] Create `TreatmentPlansController` in `src/CliniKey.API/Controllers/TreatmentPlansController.cs` — POST, GET/{id}, PATCH/{id}/approve
 
 ### Tests (US3)
 
-- [ ] T085 [US3] Unit tests for `TreatmentPlan` in `tests/CliniKey.Tests/Domain/TreatmentPlanTests.cs` — Create_WithItems_ComputesTotal, Approve_FromProposed_Succeeds, Create_EmptyItems_ReturnsFailure, InvalidTooth_ReturnsFailure
+- [X] T085 [US3] Unit tests for `TreatmentPlan` in `tests/CliniKey.Tests/Domain/TreatmentPlanTests.cs` — Create_WithItems_ComputesTotal, Approve_FromProposed_Succeeds, Create_EmptyItems_ReturnsFailure, InvalidTooth_ReturnsFailure
 
 **Checkpoint**: Treatment plans work with tooth-level procedures and cost tracking. ✅
 
