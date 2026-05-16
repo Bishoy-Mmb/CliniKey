@@ -24,6 +24,7 @@ public static class DependencyInjection
         services.AddScoped<IAppointmentRepository, AppointmentRepository>();
         services.AddScoped<IDentistRepository, DentistRepository>();
         services.AddScoped<ITreatmentPlanRepository, TreatmentPlanRepository>();
+        services.AddScoped<IInvoiceRepository, InvoiceRepository>();
         
         services.AddSingleton<IDbConnectionFactory>(_ => new DbConnectionFactory(connectionString));
 

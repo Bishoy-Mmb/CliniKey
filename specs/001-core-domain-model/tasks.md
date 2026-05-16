@@ -203,32 +203,32 @@
 
 ### Domain (US4)
 
-- [ ] T086 [US4] Create `Invoice` aggregate root in `src/CliniKey.Domain/Entities/Invoice.cs` — factory `CreateFromTreatmentPlan()`, behaviors `Issue()`, `RecordPayment(amount, method)`, `Void()`, computed Subtotal/VatAmount/Total, auto-transitions PartiallyPaid→Paid when fully paid
-- [ ] T087 [P] [US4] Create `InvoiceLine` child entity in `src/CliniKey.Domain/Entities/InvoiceLine.cs` — `Amount`, `VatRate` (snapshot 0.14m), computed `VatAmount`
-- [ ] T088 [P] [US4] Create `Payment` child entity in `src/CliniKey.Domain/Entities/Payment.cs` — `Amount`, `PaymentMethod`, `PaidAtUtc`, `ReferenceNumber`
-- [ ] T089 [P] [US4] Create `InvoicePaidEvent` in `src/CliniKey.Domain/Events/InvoicePaidEvent.cs`
-- [ ] T090 [P] [US4] Create `InvoiceErrors` in `src/CliniKey.Domain/Errors/InvoiceErrors.cs` — `AlreadyPaid`, `Overpayment`, `NotFound`, `CannotVoid`
-- [ ] T091 [P] [US4] Create `IInvoiceRepository` in `src/CliniKey.Domain/Repositories/IInvoiceRepository.cs`
+- [x] T086 [US4] Create `Invoice` aggregate root in `src/CliniKey.Domain/Entities/Invoice.cs` — factory `CreateFromTreatmentPlan()`, behaviors `Issue()`, `RecordPayment(amount, method)`, `Void()`, computed Subtotal/VatAmount/Total, auto-transitions PartiallyPaid→Paid when fully paid
+- [x] T087 [P] [US4] Create `InvoiceLine` child entity in `src/CliniKey.Domain/Entities/InvoiceLine.cs` — `Amount`, `VatRate` (snapshot 0.14m), computed `VatAmount`
+- [x] T088 [P] [US4] Create `Payment` child entity in `src/CliniKey.Domain/Entities/Payment.cs` — `Amount`, `PaymentMethod`, `PaidAtUtc`, `ReferenceNumber`
+- [x] T089 [P] [US4] Create `InvoicePaidEvent` in `src/CliniKey.Domain/Events/InvoicePaidEvent.cs`
+- [x] T090 [P] [US4] Create `InvoiceErrors` in `src/CliniKey.Domain/Errors/InvoiceErrors.cs` — `AlreadyPaid`, `Overpayment`, `NotFound`, `CannotVoid`
+- [x] T091 [P] [US4] Create `IInvoiceRepository` in `src/CliniKey.Domain/Repositories/IInvoiceRepository.cs`
 
 ### Application (US4)
 
-- [ ] T092 [US4] Create `InvoiceResponse` DTO in `src/CliniKey.Application/DTOs/InvoiceResponse.cs` — includes nested lines + payments
-- [ ] T093 [US4] Create `CreateInvoiceCommand` + Handler + Validator in `src/CliniKey.Application/Features/Invoices/Commands/CreateInvoice/` — loads TreatmentPlan, generates lines with VAT
-- [ ] T094 [US4] Create `RecordPaymentCommand` + Handler in `src/CliniKey.Application/Features/Invoices/Commands/RecordPayment/` — validates no overpayment
-- [ ] T095 [US4] Create `GetInvoiceByIdQuery` + Handler in `src/CliniKey.Application/Features/Invoices/Queries/GetInvoiceById/`
+- [x] T092 [US4] Create `InvoiceResponse` DTO in `src/CliniKey.Application/DTOs/InvoiceResponse.cs` — includes nested lines + payments
+- [x] T093 [US4] Create `CreateInvoiceCommand` + Handler + Validator in `src/CliniKey.Application/Features/Invoices/Commands/CreateInvoice/` — loads TreatmentPlan, generates lines with VAT
+- [x] T094 [US4] Create `RecordPaymentCommand` + Handler in `src/CliniKey.Application/Features/Invoices/Commands/RecordPayment/` — validates no overpayment
+- [x] T095 [US4] Create `GetInvoiceByIdQuery` + Handler in `src/CliniKey.Application/Features/Invoices/Queries/GetInvoiceById/`
 
 ### Infrastructure (US4)
 
-- [ ] T096 [US4] Create `InvoiceConfiguration` in `src/CliniKey.Infrastructure/Persistence/Configurations/InvoiceConfiguration.cs` — owns many InvoiceLines + Payments, Money value conversions
-- [ ] T097 [US4] Create `InvoiceRepository` in `src/CliniKey.Infrastructure/Persistence/Repositories/InvoiceRepository.cs` — includes Lines + Payments
+- [x] T096 [US4] Create `InvoiceConfiguration` in `src/CliniKey.Infrastructure/Persistence/Configurations/InvoiceConfiguration.cs` — owns many InvoiceLines + Payments, Money value conversions
+- [x] T097 [US4] Create `InvoiceRepository` in `src/CliniKey.Infrastructure/Persistence/Repositories/InvoiceRepository.cs` — includes Lines + Payments
 
 ### API (US4)
 
-- [ ] T098 [US4] Create `InvoicesController` in `src/CliniKey.API/Controllers/InvoicesController.cs` — POST, GET/{id}, POST/{id}/payments, PATCH/{id}/issue, PATCH/{id}/void
+- [x] T098 [US4] Create `InvoicesController` in `src/CliniKey.API/Controllers/InvoicesController.cs` — POST, GET/{id}, POST/{id}/payments, PATCH/{id}/issue, PATCH/{id}/void
 
 ### Tests (US4)
 
-- [ ] T099 [US4] Unit tests for `Invoice` in `tests/CliniKey.Tests/Domain/InvoiceTests.cs` — CreateFromTreatmentPlan_CalculatesVAT, RecordPayment_PartialPayment_StatusPartiallyPaid, RecordPayment_FullPayment_StatusPaid, RecordPayment_Overpayment_ReturnsFailure
+- [x] T099 [US4] Unit tests for `Invoice` in `tests/CliniKey.Tests/Domain/InvoiceTests.cs` — CreateFromTreatmentPlan_CalculatesVAT, RecordPayment_PartialPayment_StatusPartiallyPaid, RecordPayment_FullPayment_StatusPaid, RecordPayment_Overpayment_ReturnsFailure
 
 **Checkpoint**: Invoices generate from treatment plans with correct VAT (14%) and multi-payment support. ✅
 
