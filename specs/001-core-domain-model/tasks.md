@@ -254,11 +254,11 @@
 
 **Purpose**: Improvements that span all user stories.
 
-- [ ] T103 [P] Create `TransactionBehavior<TRequest, TResponse>` in `src/CliniKey.Application/Behaviors/TransactionBehavior.cs` — wraps command handlers in DB transactions
-- [ ] T104 Integration test for tenant isolation in `tests/CliniKey.Tests/Infrastructure/TenantIsolationTests.cs` — create two schemas, verify cross-tenant query returns zero rows
-- [ ] T105 Verify `dotnet build CliniKey.slnx` — zero warnings, zero errors
-- [ ] T106 Verify `dotnet test` — all green
-- [ ] T107 Git commit all work on `001-core-domain-model` branch
+- [x] T103 [P] Create `TransactionBehavior<TRequest, TResponse>` in `src/CliniKey.Application/Behaviors/TransactionBehavior.cs` — wraps command handlers in DB transactions
+- [x] T104 Integration test for tenant isolation in `tests/CliniKey.Tests/Infrastructure/TenantIsolationTests.cs` — create two schemas, verify cross-tenant query returns zero rows
+- [x] T105 Verify `dotnet build CliniKey.slnx` — zero warnings, zero errors
+- [x] T106 Verify `dotnet test` — all green
+- [x] T107 Git commit all work on `001-core-domain-model` branch
 
 ---
 
