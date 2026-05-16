@@ -242,9 +242,9 @@
 
 ### Implementation (US5)
 
-- [ ] T100 [US5] Add behaviors to `Dentist` (created in T050) — `UpdateSpecialization()`, `UpdateLicenseNumber()`
-- [ ] T101 [US5] Add behaviors to `Clinic` (created in T051) — `Activate()`, `Deactivate()`, `AddDentist()`, `RemoveDentist()`
-- [ ] T102 [US5] Create staff-related commands/queries if needed, or seed dev data
+- [x] T100 [US5] Add behaviors to `Dentist` (created in T050) — `UpdateSpecialization()`, `UpdateLicenseNumber()`
+- [x] T101 [US5] Add behaviors to `Clinic` (created in T051) — `Activate()`, `Deactivate()`, `AddDentist()`, `RemoveDentist()`
+- [x] T102 [US5] Create staff-related commands/queries if needed, or seed dev data
 
 **Checkpoint**: Staff management operational. Dentists linkable to multiple clinics. ✅
 

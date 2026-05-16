@@ -27,7 +27,7 @@ internal sealed class ClinicDentistConfiguration : IEntityTypeConfiguration<Clin
         builder.HasIndex(cd => new { cd.ClinicId, cd.DentistId }).IsUnique();
 
         builder.HasOne<Clinic>()
-            .WithMany()
+            .WithMany(c => c.ClinicDentists)
             .HasForeignKey(cd => cd.ClinicId)
             .OnDelete(DeleteBehavior.Cascade);
 

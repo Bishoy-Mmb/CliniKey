@@ -1,3 +1,4 @@
+using CliniKey.Domain.Errors;
 using CliniKey.SharedKernel.Interfaces;
 using CliniKey.SharedKernel.Primitives;
 
@@ -26,5 +27,33 @@ public sealed class Dentist : AggregateRoot<Guid>, IAuditableEntity
         ArgumentException.ThrowIfNullOrWhiteSpace(licenseNumber);
 
         return new Dentist(Guid.NewGuid(), fullName, specialization, licenseNumber);
+    }
+
+    public Result UpdateSpecialization(string specialization)
+    {
+        if (string.IsNullOrWhiteSpace(specialization))
+        {
+            return Result.Failure(DentistErrors.InvalidSpecialization);
+        }
+
+        if (Specialization == specialization) return Result.Success();
+
+        Specialization = specialization;
+        MarkUpdated();
+        return Result.Success();
+    }
+
+    public Result UpdateLicenseNumber(string licenseNumber)
+    {
+        if (string.IsNullOrWhiteSpace(licenseNumber))
+        {
+            return Result.Failure(DentistErrors.InvalidLicenseNumber);
+        }
+
+        if (LicenseNumber == licenseNumber) return Result.Success();
+
+        LicenseNumber = licenseNumber;
+        MarkUpdated();
+        return Result.Success();
     }
 }
