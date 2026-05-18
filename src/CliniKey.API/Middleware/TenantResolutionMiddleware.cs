@@ -6,9 +6,17 @@ public sealed class TenantResolutionMiddleware : IMiddleware
 {
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
-        if (context.Request.Headers.TryGetValue("X-Tenant-Id", out var tenantIdValues))
+        var tenantId = context.User.FindFirst("tenant_id")?.Value;
+
+#if DEBUG
+        if (string.IsNullOrEmpty(tenantId) && context.Request.Headers.TryGetValue("X-Tenant-Id", out var tenantIdValues))
         {
-            var tenantId = tenantIdValues.FirstOrDefault();
+            tenantId = tenantIdValues.FirstOrDefault();
+        }
+#endif
+
+        if (!string.IsNullOrEmpty(tenantId))
+        {
             context.Items["TenantId"] = tenantId;
         }
 

@@ -5,12 +5,14 @@ using CliniKey.Application.Features.Patients.Commands.UpdatePatient;
 using CliniKey.Application.Features.Patients.Queries.GetPatientById;
 using CliniKey.Application.Features.Patients.Queries.ListPatients;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CliniKey.API.Controllers;
 
 [ApiController]
 [Route("api/v1/[controller]")]
+[Authorize(Roles = "ClinicAdmin,Dentist,Receptionist")]
 public sealed class PatientsController : ControllerBase
 {
     private readonly ISender _sender;

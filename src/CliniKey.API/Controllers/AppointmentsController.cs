@@ -4,12 +4,14 @@ using CliniKey.Application.Features.Appointments.Commands.ScheduleAppointment;
 using CliniKey.Application.Features.Appointments.Queries.GetAppointmentById;
 using CliniKey.Application.Features.Appointments.Queries.ListAppointments;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CliniKey.API.Controllers;
 
 [ApiController]
 [Route("api/v1/[controller]")]
+[Authorize(Roles = "ClinicAdmin,Dentist,Receptionist")]
 public sealed class AppointmentsController : ControllerBase
 {
     private readonly ISender _sender;

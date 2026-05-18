@@ -6,12 +6,14 @@ using CliniKey.Application.Features.Invoices.Commands.RecordPayment;
 using CliniKey.Application.Features.Invoices.Commands.VoidInvoice;
 using CliniKey.Application.Features.Invoices.Queries.GetInvoiceById;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CliniKey.API.Controllers;
 
 [ApiController]
 [Route("api/v1/[controller]")]
+[Authorize(Roles = "ClinicAdmin,Receptionist")]
 public sealed class InvoicesController(ISender sender) : ControllerBase
 {
     [HttpPost]

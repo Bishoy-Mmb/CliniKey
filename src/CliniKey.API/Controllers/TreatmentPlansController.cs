@@ -3,12 +3,14 @@ using CliniKey.Application.Features.TreatmentPlans.Commands.CreateTreatmentPlan;
 using CliniKey.Application.Features.TreatmentPlans.Queries.GetTreatmentPlanById;
 using CliniKey.API.Extensions;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CliniKey.API.Controllers;
 
 [ApiController]
 [Route("api/v{version:apiVersion}/[controller]")]
+[Authorize(Roles = "ClinicAdmin,Dentist")]
 public sealed class TreatmentPlansController(ISender sender) : ControllerBase
 {
     [HttpPost]
