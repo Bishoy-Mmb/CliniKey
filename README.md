@@ -1,7 +1,11 @@
 # CliniKey
 
 <p align="center">
-  <img src="docs/clinikey-banner.png" alt="CliniKey Banner" width="100%" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/CliniKey-banner-Dark-Mode.png">
+    <source media="(prefers-color-scheme: light)" srcset="docs/clinikey-banner.png">
+    <img alt="CliniKey Banner" src="docs/clinikey-banner.png" width="100%">
+  </picture>
 </p>
 
 <p align="center">
