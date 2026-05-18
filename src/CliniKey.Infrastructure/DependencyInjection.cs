@@ -25,8 +25,16 @@ public static class DependencyInjection
         services.AddScoped<IDentistRepository, DentistRepository>();
         services.AddScoped<ITreatmentPlanRepository, TreatmentPlanRepository>();
         services.AddScoped<IInvoiceRepository, InvoiceRepository>();
+        services.AddScoped<IClinicRepository, ClinicRepository>();
         
         services.AddSingleton<IDbConnectionFactory>(_ => new DbConnectionFactory(connectionString));
+
+        services.AddDbContext<Identity.AuthDbContext>(options =>
+            options.UseNpgsql(connectionString));
+
+        services.AddScoped<Application.Abstractions.Identity.IAuthService, Identity.AuthService>();
+        services.AddScoped<Application.Abstractions.Identity.IJwtTokenService, Identity.JwtTokenService>();
+        services.AddScoped<Application.Abstractions.Identity.ICurrentUserService, Identity.CurrentUserService>();
 
         return services;
     }
