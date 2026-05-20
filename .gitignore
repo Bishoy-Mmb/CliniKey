@@ -6,6 +6,8 @@ obj/
 *.cache
 *.vs/
 .vs/
+.dotnet/
+
 
 ## IDE
 .idea/
