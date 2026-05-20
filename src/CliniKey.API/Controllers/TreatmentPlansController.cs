@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace CliniKey.API.Controllers;
 
 [ApiController]
-[Route("api/v{version:apiVersion}/[controller]")]
+[Route("api/v1/[controller]")]
 [Authorize(Roles = "ClinicAdmin,Dentist")]
 public sealed class TreatmentPlansController(ISender sender) : ControllerBase
 {
