@@ -1,10 +1,16 @@
 namespace CliniKey.SharedKernel.Primitives;
 
+public interface IResult
+{
+    bool IsSuccess { get; }
+    bool IsFailure { get; }
+}
+
 /// <summary>
 /// Railway-oriented Result type for explicit error handling.
 /// Forces callers to handle both success and failure paths without exceptions.
 /// </summary>
-public class Result
+public class Result : IResult
 {
     protected Result(bool isSuccess, Error error)
     {
