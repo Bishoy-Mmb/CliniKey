@@ -52,6 +52,7 @@ public class OnboardClinicCommandHandlerTests
         result.Value.Name.Should().Be(command.Name);
         result.Value.Phone.Should().Be(command.Phone);
         result.Value.SchemaName.Should().StartWith("tenant_");
+        result.Value.SchemaName.Should().HaveLength(39);
         result.Value.ProvisioningStatus.Should().Be("Provisioned");
         result.Value.SchemaHealthStatus.Should().Be("Healthy");
         _clinicRepository.Received(1).Add(Arg.Any<Clinic>());

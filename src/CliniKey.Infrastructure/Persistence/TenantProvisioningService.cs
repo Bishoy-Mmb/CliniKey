@@ -3,30 +3,34 @@ using CliniKey.Domain.Entities;
 using CliniKey.Domain.Errors;
 using CliniKey.SharedKernel.Primitives;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Npgsql;
 
 namespace CliniKey.Infrastructure.Persistence;
 
 internal sealed class TenantProvisioningService : ITenantProvisioningService
 {
-    private readonly string _connectionString;
     private readonly ITenantMigrationService _tenantMigrationService;
+    // Must be registered as Scoped - never Singleton.
+    // Captive dependency risk if lifetime is widened.
     private readonly SharedDbContext _sharedDbContext;
     private readonly TimeProvider _clock;
     private readonly TenancyOptions _options;
+    private readonly ILogger<TenantProvisioningService> _logger;
 
     public TenantProvisioningService(
-        string connectionString,
         ITenantMigrationService tenantMigrationService,
         SharedDbContext sharedDbContext,
         TimeProvider clock,
-        TenancyOptions options)
+        IOptions<TenancyOptions> options,
+        ILogger<TenantProvisioningService> logger)
     {
-        _connectionString = connectionString;
         _tenantMigrationService = tenantMigrationService;
         _sharedDbContext = sharedDbContext;
         _clock = clock;
-        _options = options;
+        _options = options.Value;
+        _logger = logger;
     }
 
     public async Task<Result<string?>> ProvisionAsync(
@@ -36,10 +40,13 @@ internal sealed class TenantProvisioningService : ITenantProvisioningService
     {
         try
         {
-            await using var connection = new NpgsqlConnection(_connectionString);
+            await using var connection = new NpgsqlConnection(_options.ConnectionString);
             await connection.OpenAsync(cancellationToken);
             await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
+            // Transaction-scoped advisory lock - releases automatically on commit or rollback.
+            // Serializes concurrent provisioning requests to prevent duplicate schema creation.
+            // Uses a fixed application-level lock key defined in TenancyOptions.ProvisioningLockKey.
             await ExecuteAsync(
                 connection,
                 transaction,
@@ -106,15 +113,19 @@ internal sealed class TenantProvisioningService : ITenantProvisioningService
     {
         try
         {
-            await using var connection = new NpgsqlConnection(_connectionString);
+            await using var connection = new NpgsqlConnection(_options.ConnectionString);
             await connection.OpenAsync(cancellationToken);
             var schema = PostgresIdentifier.QuoteSchema(schemaName);
             await using var command = new NpgsqlCommand($"DROP SCHEMA IF EXISTS {schema} CASCADE;", connection);
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
-        catch
+        catch (Exception ex)
         {
-            // Best-effort cleanup; the caller receives the provisioning failure.
+            _logger.LogError(
+                ex,
+                "Failed to drop orphaned schema {SchemaName} during rollback. " +
+                "Manual operator cleanup required.",
+                schemaName);
         }
     }
 

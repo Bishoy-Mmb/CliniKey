@@ -29,7 +29,7 @@ public class ClinicContactTests
     [Fact]
     public async Task GetClinicById_ExistingClinic_ReturnsDetails()
     {
-        var clinic = CreateClinic("Cairo Dental Center", "01112345678", "tenant_ab12cd34");
+        var clinic = CreateClinic("Cairo Dental Center", "01112345678");
         _clinicRepository.GetByIdAsync(clinic.Id, Arg.Any<CancellationToken>()).Returns(clinic);
         var handler = new GetClinicByIdQueryHandler(_clinicRepository);
 
@@ -44,7 +44,7 @@ public class ClinicContactTests
     [Fact]
     public async Task ListClinics_ReturnsPagedClinicsAndTotalCount()
     {
-        var clinic = CreateClinic("Cairo Dental Center", "01112345678", "tenant_ab12cd34");
+        var clinic = CreateClinic("Cairo Dental Center", "01112345678");
         _clinicRepository
             .ListAsync(ClinicStatus.Active, TenantSchemaHealthStatus.Healthy, 1, 50, Arg.Any<CancellationToken>())
             .Returns([clinic]);
@@ -65,7 +65,7 @@ public class ClinicContactTests
     [Fact]
     public async Task UpdateClinicContact_ValidInput_UpdatesAndSaves()
     {
-        var clinic = CreateClinic("Cairo Dental Center", "01112345678", "tenant_ab12cd34");
+        var clinic = CreateClinic("Cairo Dental Center", "01112345678");
         _clinicRepository.GetByIdAsync(clinic.Id, Arg.Any<CancellationToken>()).Returns(clinic);
         _clinicRepository
             .ExistsByPhoneAsync(Arg.Any<PhoneNumber>(), clinic.Id, Arg.Any<CancellationToken>())
@@ -85,7 +85,7 @@ public class ClinicContactTests
     [Fact]
     public async Task UpdateClinicContact_DuplicatePhone_ReturnsConflictWithoutSaving()
     {
-        var clinic = CreateClinic("Cairo Dental Center", "01112345678", "tenant_ab12cd34");
+        var clinic = CreateClinic("Cairo Dental Center", "01112345678");
         _clinicRepository.GetByIdAsync(clinic.Id, Arg.Any<CancellationToken>()).Returns(clinic);
         _clinicRepository
             .ExistsByPhoneAsync(Arg.Any<PhoneNumber>(), clinic.Id, Arg.Any<CancellationToken>())
@@ -101,9 +101,9 @@ public class ClinicContactTests
         await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
-    private Clinic CreateClinic(string name, string phone, string schemaName)
+    private Clinic CreateClinic(string name, string phone)
     {
-        var clinic = Clinic.Create(name, phone, "15 Tahrir St", schemaName, _clock).Value;
+        var clinic = Clinic.Create(name, phone, "15 Tahrir St", _clock).Value;
         clinic.MarkProvisioned("202605230001_InitialTenantOperationalSchema");
         clinic.ClearDomainEvents();
         return clinic;

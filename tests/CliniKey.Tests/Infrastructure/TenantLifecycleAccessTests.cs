@@ -32,11 +32,9 @@ public sealed class TenantLifecycleAccessTests : IAsyncLifetime
         await using var sharedContext = CreateSharedContext();
         await sharedContext.Database.EnsureCreatedAsync();
         var clinic = Clinic.Create(
-            Guid.Parse("bbbbbbbb-1111-2222-3333-cccccccccccc"),
             "Inactive Clinic",
             "01122222222",
             "15 Tahrir St",
-            "tenant_inactive_access",
             _clock).Value;
         clinic.MarkProvisioned("202605230001_InitialTenantOperationalSchema");
         clinic.Deactivate(Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"));

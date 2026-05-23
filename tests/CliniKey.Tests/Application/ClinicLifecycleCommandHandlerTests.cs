@@ -133,7 +133,7 @@ public class ClinicLifecycleCommandHandlerTests
 
     private Clinic CreateProvisionedClinic()
     {
-        var clinic = Clinic.Create("Cairo Dental Center", "01112345678", "15 Tahrir St", "tenant_ab12cd34", _clock).Value;
+        var clinic = Clinic.Create("Cairo Dental Center", "01112345678", "15 Tahrir St", _clock).Value;
         clinic.MarkProvisioned("202605230001_InitialTenantOperationalSchema");
         clinic.ClearDomainEvents();
         return clinic;

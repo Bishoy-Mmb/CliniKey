@@ -47,9 +47,7 @@ internal sealed class OnboardClinicCommandHandler : ICommandHandler<OnboardClini
             return Result.Failure<OnboardClinicResponse>(TenantErrors.DuplicatePhone);
         }
 
-        var clinicId = Guid.NewGuid();
-        var schemaName = GenerateSchemaName(clinicId);
-        var clinicResult = Clinic.Create(clinicId, request.Name, request.Phone, request.Address, schemaName, _clock);
+        var clinicResult = Clinic.Create(request.Name, request.Phone, request.Address, _clock);
         if (clinicResult.IsFailure)
         {
             return Result.Failure<OnboardClinicResponse>(clinicResult.Error);
@@ -68,6 +66,10 @@ internal sealed class OnboardClinicCommandHandler : ICommandHandler<OnboardClini
 
         if (provisioningResult.IsFailure)
         {
+            // Best-effort rollback - if this SaveChangesAsync fails, the clinic
+            // record remains in Provisioning status with no corresponding schema.
+            // A background health-check job must detect and clean up stale
+            // Provisioning records (clinics stuck in Provisioning > 10 minutes).
             _clinicRepository.Remove(clinic);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             return Result.Failure<OnboardClinicResponse>(provisioningResult.Error);
@@ -82,10 +84,5 @@ internal sealed class OnboardClinicCommandHandler : ICommandHandler<OnboardClini
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return OnboardClinicResponse.FromClinic(clinic);
-    }
-
-    private static string GenerateSchemaName(Guid clinicId)
-    {
-        return $"tenant_{clinicId:N}"[..15];
     }
 }

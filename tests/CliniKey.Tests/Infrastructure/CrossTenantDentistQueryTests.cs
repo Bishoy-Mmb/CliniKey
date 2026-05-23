@@ -56,25 +56,26 @@ public sealed class CrossTenantDentistQueryTests : IAsyncLifetime
     [Fact]
     public async Task InviteStaffStyleWrite_PersistsDentistAndClinicDentistInSharedSchema()
     {
+        string schemaName;
+
         await using (var sharedContext = CreateSharedContext())
         {
             await sharedContext.Database.EnsureCreatedAsync();
             var clinic = Clinic.Create(
-                Guid.Parse("aaaaaaaa-1111-2222-3333-bbbbbbbbbbbb"),
                 "Invite Clinic",
                 "01111111111",
                 "15 Tahrir St",
-                "tenant_invite_shared",
                 _clock).Value;
+            schemaName = clinic.SchemaName;
             sharedContext.Clinics.Add(clinic);
             await sharedContext.SaveChangesAsync();
         }
 
-        await new TenantMigrationService(_postgres.GetConnectionString()).ApplyMigrationsAsync("tenant_invite_shared");
+        await new TenantMigrationService(_postgres.GetConnectionString()).ApplyMigrationsAsync(schemaName);
 
-        await using (var tenantContext = CreateAppContext("tenant_invite_shared"))
+        await using (var tenantContext = CreateAppContext(schemaName))
         {
-            var clinic = await tenantContext.Clinics.SingleAsync(c => c.SchemaName == "tenant_invite_shared");
+            var clinic = await tenantContext.Clinics.SingleAsync(c => c.SchemaName == schemaName);
             var dentist = Dentist.Create("Dr. Invite Shared", "Orthodontics", "LIC-SHARED-INVITE", _clock).Value;
 
             new DentistRepository(tenantContext).Add(dentist);
@@ -95,7 +96,8 @@ public sealed class CrossTenantDentistQueryTests : IAsyncLifetime
             """,
             new { LicenseNumber = "LIC-SHARED-INVITE" });
         var tenantDentistTable = await connection.ExecuteScalarAsync<string?>(
-            "SELECT to_regclass('tenant_invite_shared.dentists')::text");
+            "SELECT to_regclass(@RegClass)::text",
+            new { RegClass = $"{schemaName}.dentists" });
 
         sharedDentistCount.Should().Be(1);
         sharedAssociationCount.Should().Be(1);

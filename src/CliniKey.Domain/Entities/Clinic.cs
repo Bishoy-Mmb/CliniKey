@@ -57,29 +57,20 @@ public sealed class Clinic : AggregateRoot<Guid>, IAuditableEntity
         SchemaName = null!;
     }
 
-    public static Result<Clinic> Create(string name, string schemaName, TimeProvider clock)
+    public static Result<Clinic> Create(string name, TimeProvider clock)
     {
-        return Create(name, "01000000000", "Not provided", schemaName, clock);
+        return Create(name, "01000000000", "Not provided", clock);
     }
 
     public static Result<Clinic> Create(
         string name,
         string phone,
         string address,
-        string schemaName,
         TimeProvider clock)
     {
-        return Create(Guid.NewGuid(), name, phone, address, schemaName, clock);
-    }
+        var id = Guid.NewGuid();
+        var schemaName = $"tenant_{id:N}";
 
-    public static Result<Clinic> Create(
-        Guid id,
-        string name,
-        string phone,
-        string address,
-        string schemaName,
-        TimeProvider clock)
-    {
         if (string.IsNullOrWhiteSpace(name) || name.Length > MaxNameLength)
         {
             return Result.Failure<Clinic>(ClinicErrors.InvalidName);

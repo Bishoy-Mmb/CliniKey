@@ -19,6 +19,7 @@ public static class DependencyInjection
             ?? throw new ArgumentNullException("Database connection string not found");
 
         services.Configure<TenancyOptions>(configuration.GetSection(TenancyOptions.SectionName));
+        services.PostConfigure<TenancyOptions>(options => options.ConnectionString = connectionString);
         services.AddSingleton(sp => sp.GetRequiredService<IOptions<TenancyOptions>>().Value);
 
         services.AddScoped<TenantConnectionInterceptor>();
@@ -44,11 +45,11 @@ public static class DependencyInjection
             connectionString,
             sp.GetRequiredService<TenancyOptions>()));
         services.AddScoped<ITenantProvisioningService>(sp => new TenantProvisioningService(
-            connectionString,
             sp.GetRequiredService<ITenantMigrationService>(),
             sp.GetRequiredService<SharedDbContext>(),
             sp.GetRequiredService<TimeProvider>(),
-            sp.GetRequiredService<TenancyOptions>()));
+            sp.GetRequiredService<IOptions<TenancyOptions>>(),
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<TenantProvisioningService>>()));
         services.AddScoped<IPatientRepository, PatientRepository>();
         services.AddScoped<IAppointmentRepository, AppointmentRepository>();
         services.AddScoped<IDentistRepository, DentistRepository>();

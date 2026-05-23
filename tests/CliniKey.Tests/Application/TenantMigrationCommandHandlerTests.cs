@@ -37,7 +37,7 @@ public class TenantMigrationCommandHandlerTests
             .Select(_ => Guid.NewGuid())
             .ToArray();
         var clinics = clinicIds
-            .Select((id, index) => CreateClinic(id, $"tenant_many_{index}"))
+            .Select((_, index) => CreateClinic($"Clinic {index}"))
             .ToList();
         _clinicRepository
             .ListAllAsync(
@@ -90,8 +90,8 @@ public class TenantMigrationCommandHandlerTests
     [Fact]
     public async Task Handle_WhenAnyTenantMigrationFails_MarksUnhealthyInvalidatesCacheAndReturnsPartialResults()
     {
-        var successfulClinic = CreateClinic(Guid.NewGuid(), "tenant_success");
-        var failedClinic = CreateClinic(Guid.NewGuid(), "tenant_failed");
+        var successfulClinic = CreateClinic("Successful Clinic");
+        var failedClinic = CreateClinic("Failed Clinic");
         _clinicRepository
             .ListAllAsync(ClinicStatus.Active, null, null, Arg.Any<CancellationToken>())
             .Returns([successfulClinic, failedClinic]);
@@ -135,15 +135,9 @@ public class TenantMigrationCommandHandlerTests
         await _tenantRegistry.Received(1).InvalidateAsync(failedClinic.Id, Arg.Any<CancellationToken>());
     }
 
-    private Clinic CreateClinic(Guid id, string schemaName)
+    private Clinic CreateClinic(string name)
     {
-        var clinic = Clinic.Create(
-            id,
-            $"Clinic {schemaName}",
-            "01112345678",
-            "15 Tahrir St",
-            schemaName,
-            _clock).Value;
+        var clinic = Clinic.Create(name, "01112345678", "15 Tahrir St", _clock).Value;
         clinic.MarkProvisioned("202605180001_PreviousMigration");
         clinic.ClearDomainEvents();
         return clinic;

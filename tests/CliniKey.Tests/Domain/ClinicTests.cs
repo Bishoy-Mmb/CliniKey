@@ -20,13 +20,16 @@ public class ClinicTests
     [Fact]
     public void Create_ValidInput_ReturnsClinicWithPendingProvisioning()
     {
-        var result = Clinic.Create("Cairo Dental Center", "01112345678", "15 Tahrir St", "tenant_ab12cd34", _clock);
+        var result = Clinic.Create("Cairo Dental Center", "01112345678", "15 Tahrir St", _clock);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Name.Should().Be("Cairo Dental Center");
         result.Value.Phone.Value.Should().Be("01112345678");
         result.Value.Address.Should().Be("15 Tahrir St");
-        result.Value.SchemaName.Should().Be("tenant_ab12cd34");
+        result.Value.SchemaName.Should().StartWith("tenant_");
+        result.Value.SchemaName.Should().HaveLength(39);
+        result.Value.SchemaName.Should().MatchRegex("^tenant_[0-9a-f]{32}$");
+        Clinic.MaxSchemaNameLength.Should().BeGreaterThanOrEqualTo(result.Value.SchemaName.Length);
         result.Value.Status.Should().Be(ClinicStatus.Active);
         result.Value.ProvisioningStatus.Should().Be(TenantProvisioningStatus.Pending);
         result.Value.SchemaHealthStatus.Should().Be(TenantSchemaHealthStatus.Unknown);
@@ -36,7 +39,7 @@ public class ClinicTests
     [Fact]
     public void Create_InvalidPhone_ReturnsFailure()
     {
-        var result = Clinic.Create("Cairo Dental Center", "123", "15 Tahrir St", "tenant_ab12cd34", _clock);
+        var result = Clinic.Create("Cairo Dental Center", "123", "15 Tahrir St", _clock);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("PhoneNumber.InvalidFormat");
@@ -45,7 +48,7 @@ public class ClinicTests
     [Fact]
     public void Create_InvalidAddress_ReturnsFailure()
     {
-        var result = Clinic.Create("Cairo Dental Center", "01112345678", " ", "tenant_ab12cd34", _clock);
+        var result = Clinic.Create("Cairo Dental Center", "01112345678", " ", _clock);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be(ClinicErrors.InvalidAddress);
@@ -54,7 +57,7 @@ public class ClinicTests
     [Fact]
     public void MarkProvisioned_SetsHealthyStateAndRaisesEvent()
     {
-        var clinic = Clinic.Create("Cairo Dental Center", "01112345678", "15 Tahrir St", "tenant_ab12cd34", _clock).Value;
+        var clinic = Clinic.Create("Cairo Dental Center", "01112345678", "15 Tahrir St", _clock).Value;
 
         var result = clinic.MarkProvisioned("202605230001_InitialTenantOperationalSchema");
 
@@ -69,7 +72,7 @@ public class ClinicTests
     [Fact]
     public void Deactivate_ActiveClinic_SetsInactiveAndRaisesEvent()
     {
-        var clinic = Clinic.Create("Cairo Dental Center", "01112345678", "15 Tahrir St", "tenant_ab12cd34", _clock).Value;
+        var clinic = Clinic.Create("Cairo Dental Center", "01112345678", "15 Tahrir St", _clock).Value;
         var operatorUserId = Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
 
         var result = clinic.Deactivate(operatorUserId);
@@ -85,7 +88,7 @@ public class ClinicTests
     [Fact]
     public void Deactivate_InactiveClinic_ReturnsAlreadyInactive()
     {
-        var clinic = Clinic.Create("Cairo Dental Center", "01112345678", "15 Tahrir St", "tenant_ab12cd34", _clock).Value;
+        var clinic = Clinic.Create("Cairo Dental Center", "01112345678", "15 Tahrir St", _clock).Value;
         clinic.Deactivate();
 
         var result = clinic.Deactivate();
@@ -97,7 +100,7 @@ public class ClinicTests
     [Fact]
     public void Activate_InactiveClinic_SetsActiveAndRaisesEvent()
     {
-        var clinic = Clinic.Create("Cairo Dental Center", "01112345678", "15 Tahrir St", "tenant_ab12cd34", _clock).Value;
+        var clinic = Clinic.Create("Cairo Dental Center", "01112345678", "15 Tahrir St", _clock).Value;
         clinic.Deactivate(Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"));
         clinic.ClearDomainEvents();
 
@@ -114,7 +117,7 @@ public class ClinicTests
     [Fact]
     public void Activate_ActiveClinic_ReturnsAlreadyActive()
     {
-        var clinic = Clinic.Create("Cairo Dental Center", "01112345678", "15 Tahrir St", "tenant_ab12cd34", _clock).Value;
+        var clinic = Clinic.Create("Cairo Dental Center", "01112345678", "15 Tahrir St", _clock).Value;
 
         var result = clinic.Activate();
 
@@ -125,7 +128,7 @@ public class ClinicTests
     [Fact]
     public void UpdateContact_ValidInput_ChangesPhoneAndAddress()
     {
-        var clinic = Clinic.Create("Cairo Dental Center", "01112345678", "15 Tahrir St", "tenant_ab12cd34", _clock).Value;
+        var clinic = Clinic.Create("Cairo Dental Center", "01112345678", "15 Tahrir St", _clock).Value;
 
         var result = clinic.UpdateContact("01198765432", "22 Nile Corniche");
 
@@ -138,7 +141,7 @@ public class ClinicTests
     [Fact]
     public void UpdateContact_InvalidAddress_ReturnsFailureWithoutChangingPhone()
     {
-        var clinic = Clinic.Create("Cairo Dental Center", "01112345678", "15 Tahrir St", "tenant_ab12cd34", _clock).Value;
+        var clinic = Clinic.Create("Cairo Dental Center", "01112345678", "15 Tahrir St", _clock).Value;
 
         var result = clinic.UpdateContact("01198765432", " ");
 
