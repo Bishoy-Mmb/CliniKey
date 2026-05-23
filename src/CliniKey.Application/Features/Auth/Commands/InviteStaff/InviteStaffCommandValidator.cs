@@ -1,6 +1,7 @@
 using FluentValidation;
 using CliniKey.Application.Constants;
 using CliniKey.Application.Extensions;
+using CliniKey.Domain.Entities;
 
 namespace CliniKey.Application.Features.Auth.Commands.InviteStaff;
 
@@ -28,10 +29,14 @@ public sealed class InviteStaffCommandValidator : AbstractValidator<InviteStaffC
         When(x => x.Role == Roles.Dentist, () =>
         {
             RuleFor(x => x.Specialization)
-                .NotEmpty().WithMessage("Specialization is required for a Dentist.");
+                .NotEmpty().WithMessage("Specialization is required for a Dentist.")
+                .MaximumLength(Dentist.MaxSpecializationLength)
+                .WithMessage($"Specialization must not exceed {Dentist.MaxSpecializationLength} characters.");
                 
             RuleFor(x => x.LicenseNumber)
-                .NotEmpty().WithMessage("LicenseNumber is required for a Dentist.");
+                .NotEmpty().WithMessage("LicenseNumber is required for a Dentist.")
+                .MaximumLength(Dentist.MaxLicenseNumberLength)
+                .WithMessage($"LicenseNumber must not exceed {Dentist.MaxLicenseNumberLength} characters.");
         });
     }
 }
