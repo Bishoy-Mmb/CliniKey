@@ -18,7 +18,7 @@ internal sealed class GetPatientByIdQueryHandler : IQueryHandler<GetPatientByIdQ
 
     public async Task<Result<PatientResponse>> Handle(GetPatientByIdQuery request, CancellationToken cancellationToken)
     {
-        using var connection = _dbConnectionFactory.CreateConnection();
+        using var connection = _dbConnectionFactory.CreateTenantConnection();
 
         const string sql = """
             SELECT

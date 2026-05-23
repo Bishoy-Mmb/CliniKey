@@ -73,6 +73,8 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization(options =>
 {
+    options.AddPolicy(Policies.CanManageTenants,
+        p => p.RequireRole(Roles.PlatformOperator));
     options.AddPolicy(Policies.CanInviteStaff,
         p => p.RequireRole(Roles.ClinicAdmin));
     options.AddPolicy(Policies.CanManageStaff,
@@ -93,7 +95,7 @@ using (var scope = app.Services.CreateScope())
 {
     var roleManager = scope.ServiceProvider
         .GetRequiredService<RoleManager<IdentityRole<Guid>>>();
-    string[] roles = [Roles.ClinicAdmin, Roles.Dentist, Roles.Receptionist];
+    string[] roles = [Roles.PlatformOperator, Roles.ClinicAdmin, Roles.Dentist, Roles.Receptionist];
     foreach (var role in roles)
     {
         if (!await roleManager.RoleExistsAsync(role))

@@ -21,7 +21,7 @@ internal sealed class GetTreatmentPlanByIdQueryHandler(IDbConnectionFactory dbCo
 
     public async Task<Result<TreatmentPlanResponse>> Handle(GetTreatmentPlanByIdQuery request, CancellationToken cancellationToken)
     {
-        using var connection = dbConnectionFactory.CreateConnection();
+        using var connection = dbConnectionFactory.CreateTenantConnection();
 
         const string sql = """
             SELECT 

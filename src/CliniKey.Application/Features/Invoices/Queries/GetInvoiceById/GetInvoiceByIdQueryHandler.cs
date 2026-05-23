@@ -23,7 +23,7 @@ internal sealed class GetInvoiceByIdQueryHandler(IDbConnectionFactory dbConnecti
 
     public async Task<Result<InvoiceResponse>> Handle(GetInvoiceByIdQuery request, CancellationToken cancellationToken)
     {
-        using var connection = dbConnectionFactory.CreateConnection();
+        using var connection = dbConnectionFactory.CreateTenantConnection();
 
         const string sql = """
             SELECT 

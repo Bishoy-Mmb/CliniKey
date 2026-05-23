@@ -18,7 +18,7 @@ internal sealed class ListAppointmentsQueryHandler : IQueryHandler<ListAppointme
 
     public async Task<Result<IReadOnlyList<AppointmentResponse>>> Handle(ListAppointmentsQuery request, CancellationToken cancellationToken)
     {
-        using IDbConnection connection = _dbConnectionFactory.CreateConnection();
+        using IDbConnection connection = _dbConnectionFactory.CreateTenantConnection();
 
         var sql = @"
             SELECT
