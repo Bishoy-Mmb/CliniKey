@@ -1,5 +1,6 @@
 using CliniKey.API.Contracts.Invoices;
 using CliniKey.API.Extensions;
+using CliniKey.Application.Constants;
 using CliniKey.Application.Features.Invoices.Commands.CreateInvoice;
 using CliniKey.Application.Features.Invoices.Commands.IssueInvoice;
 using CliniKey.Application.Features.Invoices.Commands.RecordPayment;
@@ -13,7 +14,7 @@ namespace CliniKey.API.Controllers;
 
 [ApiController]
 [Route("api/v1/[controller]")]
-[Authorize(Roles = "ClinicAdmin,Receptionist")]
+[Authorize(Policy = Policies.CanManageBilling)]
 public sealed class InvoicesController(ISender sender) : ControllerBase
 {
     [HttpPost]

@@ -1,4 +1,5 @@
 using CliniKey.API.Extensions;
+using CliniKey.Application.Constants;
 using CliniKey.Application.Features.Patients.Commands.CreatePatient;
 using CliniKey.Application.Features.Patients.Commands.DeletePatient;
 using CliniKey.Application.Features.Patients.Commands.UpdatePatient;
@@ -12,7 +13,7 @@ namespace CliniKey.API.Controllers;
 
 [ApiController]
 [Route("api/v1/[controller]")]
-[Authorize(Roles = "ClinicAdmin,Dentist,Receptionist")]
+[Authorize(Policy = Policies.CanViewPatients)]
 public sealed class PatientsController : ControllerBase
 {
     private readonly ISender _sender;

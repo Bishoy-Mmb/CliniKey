@@ -1,4 +1,5 @@
 using CliniKey.API.Extensions;
+using CliniKey.Application.Constants;
 using CliniKey.Application.Features.Appointments.Commands.ChangeStatus;
 using CliniKey.Application.Features.Appointments.Commands.ScheduleAppointment;
 using CliniKey.Application.Features.Appointments.Queries.GetAppointmentById;
@@ -11,7 +12,7 @@ namespace CliniKey.API.Controllers;
 
 [ApiController]
 [Route("api/v1/[controller]")]
-[Authorize(Roles = "ClinicAdmin,Dentist,Receptionist")]
+[Authorize(Policy = Policies.CanManageAppointments)]
 public sealed class AppointmentsController : ControllerBase
 {
     private readonly ISender _sender;

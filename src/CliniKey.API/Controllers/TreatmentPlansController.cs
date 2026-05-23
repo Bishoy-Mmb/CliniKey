@@ -2,6 +2,7 @@ using CliniKey.Application.Features.TreatmentPlans.Commands.ApproveTreatmentPlan
 using CliniKey.Application.Features.TreatmentPlans.Commands.CreateTreatmentPlan;
 using CliniKey.Application.Features.TreatmentPlans.Queries.GetTreatmentPlanById;
 using CliniKey.API.Extensions;
+using CliniKey.Application.Constants;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,7 +11,7 @@ namespace CliniKey.API.Controllers;
 
 [ApiController]
 [Route("api/v1/[controller]")]
-[Authorize(Roles = "ClinicAdmin,Dentist")]
+[Authorize(Policy = Policies.CanManageTreatmentPlans)]
 public sealed class TreatmentPlansController(ISender sender) : ControllerBase
 {
     [HttpPost]
