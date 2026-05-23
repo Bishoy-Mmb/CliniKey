@@ -26,6 +26,7 @@
     <ProjectReference Include="..\..\src\CliniKey.Domain\CliniKey.Domain.csproj" />
     <ProjectReference Include="..\..\src\CliniKey.Application\CliniKey.Application.csproj" />
     <ProjectReference Include="..\..\src\CliniKey.Infrastructure\CliniKey.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\CliniKey.API\CliniKey.API.csproj" />
   </ItemGroup>
 
 </Project>
