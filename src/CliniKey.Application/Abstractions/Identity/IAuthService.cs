@@ -1,4 +1,5 @@
 using CliniKey.Application.DTOs;
+using CliniKey.Application.Features.Auth.Queries.GetUserById;
 using CliniKey.SharedKernel.Primitives;
 
 namespace CliniKey.Application.Abstractions.Identity;
@@ -12,4 +13,6 @@ public interface IAuthService
     Task<Result<TokenResponse>> RefreshTokenAsync(string refreshToken, CancellationToken cancellationToken = default);
     
     Task<Result<Guid>> InviteStaffAsync(string email, string password, string fullName, string role, string? specialization, string? licenseNumber, CancellationToken cancellationToken = default);
+
+    Task<Result<UserByIdResponse>> GetUserByIdAsync(Guid userId, CancellationToken cancellationToken = default);
 }

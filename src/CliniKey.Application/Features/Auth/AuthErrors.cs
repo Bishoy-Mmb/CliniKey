@@ -15,6 +15,10 @@ public static class AuthErrors
     public static readonly Error AccountDeactivated = Error.Failure(
         "Auth.AccountDeactivated",
         "Account has been deactivated.");
+
+    public static readonly Error ClinicDeactivated = Error.Failure(
+        "Auth.ClinicDeactivated",
+        "Clinic has been deactivated.");
         
     public static readonly Error InvalidRefreshToken = Error.Failure(
         "Auth.InvalidRefreshToken",
@@ -35,4 +39,10 @@ public static class AuthErrors
     public static readonly Error WeakPassword = Error.Validation(
         "Auth.WeakPassword",
         "Password does not meet complexity requirements.");
+
+    public static Error RoleAssignmentFailed(string description) => Error.Failure(
+        "Auth.RoleAssignmentFailed",
+        description);
+
+    public static Error UserNotFound(Guid userId) => Error.NotFound("User", userId);
 }

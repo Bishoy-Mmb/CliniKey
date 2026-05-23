@@ -1,15 +1,20 @@
 using System.IdentityModel.Tokens.Jwt;
+using CliniKey.Application.Constants;
 using CliniKey.Infrastructure.Identity;
 using System.Security.Claims;
 using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Xunit;
 
+using Microsoft.Extensions.Time.Testing;
+
 namespace CliniKey.Tests.Auth;
 
 public class JwtTokenServiceTests
 {
     private readonly JwtSettings _jwtSettings;
+    private readonly FakeTimeProvider _clock;
+    private readonly DateTimeOffset _fixedTime = new(2026, 5, 21, 10, 0, 0, TimeSpan.Zero);
     private readonly JwtTokenService _jwtTokenService;
 
     public JwtTokenServiceTests()
@@ -23,8 +28,9 @@ public class JwtTokenServiceTests
             RefreshTokenExpirationDays = 7
         };
 
+        _clock = new FakeTimeProvider(_fixedTime);
         var options = Options.Create(_jwtSettings);
-        _jwtTokenService = new JwtTokenService(options);
+        _jwtTokenService = new JwtTokenService(options, _clock);
     }
 
     [Fact]
@@ -33,7 +39,7 @@ public class JwtTokenServiceTests
         // Arrange
         var userId = Guid.NewGuid();
         var email = "test@clinic.com";
-        var role = "ClinicAdmin";
+        var role = Roles.ClinicAdmin;
         var tenantId = Guid.NewGuid();
         Guid? dentistId = Guid.NewGuid();
 

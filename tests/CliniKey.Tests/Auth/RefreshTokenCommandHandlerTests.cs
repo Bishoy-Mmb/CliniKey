@@ -4,6 +4,7 @@ using CliniKey.Application.Features.Auth;
 using CliniKey.Application.Features.Auth.Commands.RefreshToken;
 using CliniKey.SharedKernel.Primitives;
 using FluentAssertions;
+using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 using Xunit;
 
@@ -13,10 +14,13 @@ public class RefreshTokenCommandHandlerTests
 {
     private readonly IAuthService _authServiceMock;
     private readonly RefreshTokenCommandHandler _handler;
+    private readonly FakeTimeProvider _clock;
+    private readonly DateTimeOffset _fixedTime = new(2026, 5, 21, 10, 0, 0, TimeSpan.Zero);
 
     public RefreshTokenCommandHandlerTests()
     {
         _authServiceMock = Substitute.For<IAuthService>();
+        _clock = new FakeTimeProvider(_fixedTime);
         _handler = new RefreshTokenCommandHandler(_authServiceMock);
     }
 
@@ -25,7 +29,10 @@ public class RefreshTokenCommandHandlerTests
     {
         // Arrange
         var command = new RefreshTokenCommand("valid_refresh_token");
-        var expectedResponse = new TokenResponse("new_access_token", "new_refresh_token", DateTime.UtcNow.AddDays(7));
+        var expectedResponse = new TokenResponse(
+            "new_access_token",
+            "new_refresh_token",
+            _clock.GetUtcNow().UtcDateTime.AddDays(7));
 
         _authServiceMock.RefreshTokenAsync(command.RefreshToken, Arg.Any<CancellationToken>())
             .Returns(Result.Success(expectedResponse));

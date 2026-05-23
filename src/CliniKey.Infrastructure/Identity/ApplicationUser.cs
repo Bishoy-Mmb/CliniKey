@@ -8,5 +8,10 @@ public sealed class ApplicationUser : IdentityUser<Guid>
     public Guid? DentistId { get; set; }
     public bool IsActive { get; set; } = true;
     public string FullName { get; set; } = string.Empty;
-    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAtUtc { get; private set; }
+
+    public void InitializeCreatedAt(DateTime createdAtUtc)
+    {
+        CreatedAtUtc = createdAtUtc;
+    }
 }

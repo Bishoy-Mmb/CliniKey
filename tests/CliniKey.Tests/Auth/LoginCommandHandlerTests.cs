@@ -4,6 +4,7 @@ using CliniKey.Application.Features.Auth;
 using CliniKey.Application.Features.Auth.Commands.Login;
 using CliniKey.SharedKernel.Primitives;
 using FluentAssertions;
+using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 using Xunit;
 
@@ -13,10 +14,13 @@ public class LoginCommandHandlerTests
 {
     private readonly IAuthService _authServiceMock;
     private readonly LoginCommandHandler _handler;
+    private readonly FakeTimeProvider _clock;
+    private readonly DateTimeOffset _fixedTime = new(2026, 5, 21, 10, 0, 0, TimeSpan.Zero);
 
     public LoginCommandHandlerTests()
     {
         _authServiceMock = Substitute.For<IAuthService>();
+        _clock = new FakeTimeProvider(_fixedTime);
         _handler = new LoginCommandHandler(_authServiceMock);
     }
 
@@ -25,7 +29,10 @@ public class LoginCommandHandlerTests
     {
         // Arrange
         var command = new LoginCommand("user@clinic.com", "Password123!");
-        var expectedResponse = new TokenResponse("access_token", "refresh_token", DateTime.UtcNow.AddDays(7));
+        var expectedResponse = new TokenResponse(
+            "access_token",
+            "refresh_token",
+            _clock.GetUtcNow().UtcDateTime.AddDays(7));
 
         _authServiceMock.LoginAsync(command.Email, command.Password, Arg.Any<CancellationToken>())
             .Returns(Result.Success(expectedResponse));

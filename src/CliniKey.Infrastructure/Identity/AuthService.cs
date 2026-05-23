@@ -5,6 +5,7 @@ using CliniKey.Domain.Repositories;
 using CliniKey.Application.DTOs;
 using CliniKey.Application.Constants;
 using CliniKey.Application.Features.Auth;
+using CliniKey.Application.Features.Auth.Queries.GetUserById;
 using CliniKey.SharedKernel.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -25,6 +26,7 @@ internal sealed class AuthService : IAuthService
     private readonly IDentistRepository _dentistRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly JwtSettings _jwtSettings;
+    private readonly TimeProvider _clock;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
@@ -34,7 +36,8 @@ internal sealed class AuthService : IAuthService
         ICurrentUserService currentUserService,
         IDentistRepository dentistRepository,
         IUnitOfWork unitOfWork,
-        IOptions<JwtSettings> jwtSettings)
+        IOptions<JwtSettings> jwtSettings,
+        TimeProvider clock)
     {
         _userManager = userManager;
         _clinicRepository = clinicRepository;
@@ -44,6 +47,7 @@ internal sealed class AuthService : IAuthService
         _dentistRepository = dentistRepository;
         _unitOfWork = unitOfWork;
         _jwtSettings = jwtSettings.Value;
+        _clock = clock;
     }
 
     private static string HashToken(string token)
@@ -72,9 +76,9 @@ internal sealed class AuthService : IAuthService
             Email = email,
             FullName = fullName,
             TenantId = clinicId,
-            CreatedAtUtc = DateTime.UtcNow,
             IsActive = true
         };
+        user.InitializeCreatedAt(_clock.GetUtcNow().UtcDateTime);
 
         var result = await _userManager.CreateAsync(user, password);
 
@@ -83,7 +87,14 @@ internal sealed class AuthService : IAuthService
             return Result.Failure<Guid>(Error.Failure("Auth.RegistrationFailed", result.Errors.First().Description));
         }
 
-        await _userManager.AddToRoleAsync(user, Roles.ClinicAdmin);
+        var roleResult = await _userManager.AddToRoleAsync(user, Roles.ClinicAdmin);
+        if (!roleResult.Succeeded)
+        {
+            await _userManager.DeleteAsync(user);
+            return Result.Failure<Guid>(
+                AuthErrors.RoleAssignmentFailed(
+                    string.Join(", ", roleResult.Errors.Select(e => e.Description))));
+        }
 
         return Result.Success(user.Id);
     }
@@ -106,6 +117,12 @@ internal sealed class AuthService : IAuthService
             return Result.Failure<TokenResponse>(AuthErrors.InvalidCredentials);
         }
 
+        var clinic = await _clinicRepository.GetByIdAsync(user.TenantId, cancellationToken);
+        if (clinic is null || !clinic.IsActive)
+        {
+            return Result.Failure<TokenResponse>(AuthErrors.ClinicDeactivated);
+        }
+
         var roles = await _userManager.GetRolesAsync(user);
         var primaryRole = roles.FirstOrDefault() ?? string.Empty;
 
@@ -119,10 +136,9 @@ internal sealed class AuthService : IAuthService
             Id = Guid.NewGuid(),
             TokenHash = hashedTokenString,
             UserId = user.Id,
-            FamilyId = Guid.NewGuid(),
-            ExpiresAtUtc = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays),
-            CreatedAtUtc = DateTime.UtcNow
+            FamilyId = Guid.NewGuid()
         };
+        refreshToken.Initialize(_clock.GetUtcNow().UtcDateTime, _clock.GetUtcNow().UtcDateTime.AddDays(_jwtSettings.RefreshTokenExpirationDays));
 
         _authDbContext.RefreshTokens.Add(refreshToken);
         await _authDbContext.SaveChangesAsync(cancellationToken);
@@ -147,7 +163,13 @@ internal sealed class AuthService : IAuthService
 
         if (role == Roles.Dentist)
         {
-            var dentist = CliniKey.Domain.Entities.Dentist.Create(fullName, specialization!, licenseNumber!);
+            var dentistResult = CliniKey.Domain.Entities.Dentist.Create(fullName, specialization!, licenseNumber!, _clock);
+            if (dentistResult.IsFailure)
+            {
+                return Result.Failure<Guid>(dentistResult.Error);
+            }
+
+            var dentist = dentistResult.Value;
             _dentistRepository.Add(dentist);
             
             var clinic = await _clinicRepository.GetByIdAsync(tenantId, cancellationToken);
@@ -165,9 +187,9 @@ internal sealed class AuthService : IAuthService
             FullName = fullName,
             TenantId = tenantId,
             DentistId = newDentistId,
-            CreatedAtUtc = DateTime.UtcNow,
             IsActive = true
         };
+        user.InitializeCreatedAt(_clock.GetUtcNow().UtcDateTime);
 
         using var transaction = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
 
@@ -178,7 +200,14 @@ internal sealed class AuthService : IAuthService
             return Result.Failure<Guid>(Error.Failure("Auth.InvitationFailed", result.Errors.First().Description));
         }
 
-        await _userManager.AddToRoleAsync(user, role);
+        var roleResult = await _userManager.AddToRoleAsync(user, role);
+        if (!roleResult.Succeeded)
+        {
+            await _userManager.DeleteAsync(user);
+            return Result.Failure<Guid>(
+                AuthErrors.RoleAssignmentFailed(
+                    string.Join(", ", roleResult.Errors.Select(e => e.Description))));
+        }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -199,7 +228,7 @@ internal sealed class AuthService : IAuthService
             return Result.Failure<TokenResponse>(AuthErrors.InvalidRefreshToken);
         }
 
-        if (tokenEntity.ExpiresAtUtc < DateTime.UtcNow)
+        if (tokenEntity.ExpiresAtUtc < _clock.GetUtcNow().UtcDateTime)
         {
             return Result.Failure<TokenResponse>(AuthErrors.RefreshTokenExpired);
         }
@@ -212,7 +241,7 @@ internal sealed class AuthService : IAuthService
                 
             foreach (var t in familyTokens)
             {
-                t.RevokedAtUtc = DateTime.UtcNow;
+                t.Revoke(_clock.GetUtcNow().UtcDateTime);
             }
             await _authDbContext.SaveChangesAsync(cancellationToken);
 
@@ -238,17 +267,37 @@ internal sealed class AuthService : IAuthService
             Id = Guid.NewGuid(),
             TokenHash = newHashedString,
             UserId = user.Id,
-            FamilyId = tokenEntity.FamilyId,
-            ExpiresAtUtc = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays),
-            CreatedAtUtc = DateTime.UtcNow
+            FamilyId = tokenEntity.FamilyId
         };
+        newRefreshToken.Initialize(_clock.GetUtcNow().UtcDateTime, _clock.GetUtcNow().UtcDateTime.AddDays(_jwtSettings.RefreshTokenExpirationDays));
 
-        tokenEntity.RevokedAtUtc = DateTime.UtcNow;
+        tokenEntity.Revoke(_clock.GetUtcNow().UtcDateTime);
         tokenEntity.ReplacedByTokenId = newRefreshToken.Id;
 
         _authDbContext.RefreshTokens.Add(newRefreshToken);
         await _authDbContext.SaveChangesAsync(cancellationToken);
 
         return Result.Success(new TokenResponse(newAccessToken, newRefreshTokenString, newRefreshToken.ExpiresAtUtc));
+    }
+
+    public async Task<Result<UserByIdResponse>> GetUserByIdAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user is null || user.TenantId != _currentUserService.TenantId)
+        {
+            return Result.Failure<UserByIdResponse>(AuthErrors.UserNotFound(userId));
+        }
+
+        var roles = await _userManager.GetRolesAsync(user);
+        var response = new UserByIdResponse(
+            user.Id,
+            user.Email ?? string.Empty,
+            user.FullName,
+            roles.FirstOrDefault() ?? string.Empty,
+            user.TenantId,
+            user.DentistId,
+            user.IsActive);
+
+        return response;
     }
 }

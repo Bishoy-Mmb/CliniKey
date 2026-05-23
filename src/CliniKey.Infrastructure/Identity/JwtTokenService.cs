@@ -11,10 +11,12 @@ namespace CliniKey.Infrastructure.Identity;
 internal sealed class JwtTokenService : IJwtTokenService
 {
     private readonly JwtSettings _jwtSettings;
+    private readonly TimeProvider _clock;
 
-    public JwtTokenService(IOptions<JwtSettings> jwtSettings)
+    public JwtTokenService(IOptions<JwtSettings> jwtSettings, TimeProvider clock)
     {
         _jwtSettings = jwtSettings.Value;
+        _clock = clock;
     }
 
     public string GenerateAccessToken(Guid userId, string email, string role, Guid tenantId, Guid? dentistId)
@@ -40,7 +42,7 @@ internal sealed class JwtTokenService : IJwtTokenService
             issuer: _jwtSettings.Issuer,
             audience: _jwtSettings.Audience,
             claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes),
+            expires: _clock.GetUtcNow().UtcDateTime.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes),
             signingCredentials: creds
         );
 
