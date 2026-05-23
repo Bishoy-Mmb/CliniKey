@@ -1,7 +1,7 @@
 using CliniKey.API.Middleware;
-using CliniKey.Application.Behaviors;
+using CliniKey.Application;
+using CliniKey.Application.Constants;
 using CliniKey.Infrastructure;
-using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -16,15 +16,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
-builder.Services.AddMediatR(config =>
-{
-    config.RegisterServicesFromAssembly(typeof(CliniKey.Application.Abstractions.Messaging.ICommand).Assembly);
-    config.AddOpenBehavior(typeof(LoggingBehavior<,>));
-    config.AddOpenBehavior(typeof(ValidationBehavior<,>));
-});
-
-builder.Services.AddValidatorsFromAssembly(typeof(CliniKey.Application.Abstractions.Messaging.ICommand).Assembly);
-
+builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(JwtSettings.SectionName));
@@ -79,9 +71,37 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(Policies.CanInviteStaff,
+        p => p.RequireRole(Roles.ClinicAdmin));
+    options.AddPolicy(Policies.CanManageStaff,
+        p => p.RequireRole(Roles.ClinicAdmin));
+    options.AddPolicy(Policies.CanManageAppointments,
+        p => p.RequireRole(Roles.ClinicAdmin, Roles.Dentist, Roles.Receptionist));
+    options.AddPolicy(Policies.CanViewPatients,
+        p => p.RequireRole(Roles.ClinicAdmin, Roles.Dentist, Roles.Receptionist));
+    options.AddPolicy(Policies.CanManageBilling,
+        p => p.RequireRole(Roles.ClinicAdmin));
+    options.AddPolicy(Policies.CanManageTreatmentPlans,
+        p => p.RequireRole(Roles.ClinicAdmin, Roles.Dentist));
+});
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var roleManager = scope.ServiceProvider
+        .GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+    string[] roles = [Roles.ClinicAdmin, Roles.Dentist, Roles.Receptionist];
+    foreach (var role in roles)
+    {
+        if (!await roleManager.RoleExistsAsync(role))
+        {
+            await roleManager.CreateAsync(new IdentityRole<Guid>(role));
+        }
+    }
+}
 
 if (app.Environment.IsDevelopment())
 {

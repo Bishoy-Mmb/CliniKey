@@ -183,29 +183,6 @@ namespace CliniKey.Infrastructure.Persistence.Migrations.Auth
                         .HasDatabaseName("RoleNameIndex");
 
                     b.ToTable("AspNetRoles", "public");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("aaaaaaaa-0001-0001-0001-000000000001"),
-                            ConcurrencyStamp = "68bfb878-b83c-49e2-bc73-68cffef81dc9",
-                            Name = "ClinicAdmin",
-                            NormalizedName = "CLINICADMIN"
-                        },
-                        new
-                        {
-                            Id = new Guid("aaaaaaaa-0001-0001-0001-000000000002"),
-                            ConcurrencyStamp = "56d8ae36-80bf-4b66-a56f-91415a0ab840",
-                            Name = "Dentist",
-                            NormalizedName = "DENTIST"
-                        },
-                        new
-                        {
-                            Id = new Guid("aaaaaaaa-0001-0001-0001-000000000003"),
-                            ConcurrencyStamp = "6c394a6d-2841-4b40-a7ac-99cf591ef700",
-                            Name = "Receptionist",
-                            NormalizedName = "RECEPTIONIST"
-                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
