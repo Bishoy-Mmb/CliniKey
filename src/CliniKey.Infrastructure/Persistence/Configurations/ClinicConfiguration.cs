@@ -19,12 +19,12 @@ internal sealed class ClinicConfiguration : IEntityTypeConfiguration<Clinic>
         builder.Property(c => c.Name)
             .HasColumnName("name")
             .IsRequired()
-            .HasMaxLength(100);
+            .HasMaxLength(Clinic.MaxNameLength);
 
         builder.Property(c => c.SchemaName)
             .HasColumnName("schema_name")
             .IsRequired()
-            .HasMaxLength(50);
+            .HasMaxLength(Clinic.MaxSchemaNameLength);
         
         builder.Property(c => c.IsActive)
             .HasColumnName("is_active")

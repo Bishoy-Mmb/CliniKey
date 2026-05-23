@@ -19,17 +19,17 @@ internal sealed class DentistConfiguration : IEntityTypeConfiguration<Dentist>
         builder.Property(d => d.FullName)
             .HasColumnName("full_name")
             .IsRequired()
-            .HasMaxLength(200);
+            .HasMaxLength(Dentist.MaxFullNameLength);
 
         builder.Property(d => d.Specialization)
             .HasColumnName("specialization")
             .IsRequired()
-            .HasMaxLength(100);
+            .HasMaxLength(Dentist.MaxSpecializationLength);
 
         builder.Property(d => d.LicenseNumber)
             .HasColumnName("license_number")
             .IsRequired()
-            .HasMaxLength(50);
+            .HasMaxLength(Dentist.MaxLicenseNumberLength);
 
         builder.Property(d => d.CreatedAtUtc)
             .HasColumnName("created_at_utc")
