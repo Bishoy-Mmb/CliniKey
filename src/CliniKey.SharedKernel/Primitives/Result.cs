@@ -1,9 +1,14 @@
+using System.Runtime.CompilerServices;
+
+[assembly: InternalsVisibleTo("CliniKey.Application")]
+
 namespace CliniKey.SharedKernel.Primitives;
 
 public interface IResult
 {
     bool IsSuccess { get; }
     bool IsFailure { get; }
+    static abstract IResult Failure(Error error);
 }
 
 /// <summary>
@@ -31,13 +36,19 @@ public class Result : IResult
     public static Result Success() => new(true, Error.None);
     public static Result Failure(Error error) => new(false, error);
     public static Result<TValue> Success<TValue>(TValue value) => new(value, true, Error.None);
-    public static Result<TValue> Failure<TValue>(Error error) => new(default, false, error);
+    public static Result<TValue> Failure<TValue>(Error error) => Result<TValue>.Failure(error);
+    static IResult IResult.Failure(Error error) => Failure(error);
+
+    internal static TResult CreateFailure<TResult>(Error error) where TResult : IResult
+    {
+        return (TResult)TResult.Failure(error);
+    }
 }
 
 /// <summary>
 /// Generic result that wraps a value on the success path.
 /// </summary>
-public class Result<TValue> : Result
+public class Result<TValue> : Result, IResult
 {
     private readonly TValue? _value;
 
@@ -50,6 +61,9 @@ public class Result<TValue> : Result
     public TValue Value => IsSuccess
         ? _value!
         : throw new InvalidOperationException("Cannot access value of a failed result.");
+
+    public static new Result<TValue> Failure(Error error) => new(default, false, error);
+    static IResult IResult.Failure(Error error) => Failure(error);
 
     public static implicit operator Result<TValue>(TValue value) =>
         Success(value);
