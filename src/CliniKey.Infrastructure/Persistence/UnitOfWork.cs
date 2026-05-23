@@ -9,20 +9,23 @@ internal sealed class UnitOfWork : IUnitOfWork
 {
     private readonly AppDbContext _dbContext;
     private readonly IPublisher _publisher;
+    private readonly TimeProvider _clock;
 
-    public UnitOfWork(AppDbContext dbContext, IPublisher publisher)
+    public UnitOfWork(AppDbContext dbContext, IPublisher publisher, TimeProvider clock)
     {
         _dbContext = dbContext;
         _publisher = publisher;
+        _clock = clock;
     }
 
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         UpdateAuditableEntities();
+        var domainEvents = CollectDomainEvents();
 
         var result = await _dbContext.SaveChangesAsync(cancellationToken);
 
-        await PublishDomainEventsAsync();
+        await PublishDomainEventsAsync(domainEvents, cancellationToken);
 
         return result;
     }
@@ -30,37 +33,41 @@ internal sealed class UnitOfWork : IUnitOfWork
     private void UpdateAuditableEntities()
     {
         var entries = _dbContext.ChangeTracker.Entries<IAuditableEntity>();
+        var now = _clock.GetUtcNow().UtcDateTime;
 
         foreach (var entry in entries)
         {
             if (entry.State == EntityState.Added)
             {
-                entry.Entity.CreatedAtUtc = DateTime.UtcNow;
+                entry.Property(nameof(IAuditableEntity.CreatedAtUtc)).CurrentValue = now;
             }
 
             if (entry.State == EntityState.Modified)
             {
-                entry.Entity.UpdatedAtUtc = DateTime.UtcNow;
+                entry.Property(nameof(IAuditableEntity.UpdatedAtUtc)).CurrentValue = now;
             }
         }
     }
 
-    private async Task PublishDomainEventsAsync()
+    private List<IDomainEvent> CollectDomainEvents()
     {
-        var domainEvents = _dbContext.ChangeTracker
+        return _dbContext.ChangeTracker
             .Entries<IHasDomainEvents>()
             .Select(entry => entry.Entity)
             .SelectMany(entity =>
             {
-                var domainEvents = entity.DomainEvents;
+                var domainEvents = entity.DomainEvents.ToList();
                 entity.ClearDomainEvents();
                 return domainEvents;
             })
             .ToList();
+    }
 
+    private async Task PublishDomainEventsAsync(List<IDomainEvent> domainEvents, CancellationToken cancellationToken)
+    {
         foreach (var domainEvent in domainEvents)
         {
-            await _publisher.Publish(domainEvent);
+            await _publisher.Publish(domainEvent, cancellationToken);
         }
     }
 }
