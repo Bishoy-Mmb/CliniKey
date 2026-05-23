@@ -12,9 +12,10 @@ public abstract class AggregateRoot<TId> : Entity<TId>
     public DateTime CreatedAtUtc { get; protected init; }
     public DateTime? UpdatedAtUtc { get; protected set; }
 
-#pragma warning disable CS8618
-    protected AggregateRoot() { }
-#pragma warning restore CS8618
+    protected AggregateRoot()
+    {
+        Clock = TimeProvider.System;
+    }
 
     protected AggregateRoot(TimeProvider clock)
     {
