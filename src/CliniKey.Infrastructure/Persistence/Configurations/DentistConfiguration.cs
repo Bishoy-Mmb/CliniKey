@@ -8,7 +8,7 @@ internal sealed class DentistConfiguration : IEntityTypeConfiguration<Dentist>
 {
     public void Configure(EntityTypeBuilder<Dentist> builder)
     {
-        builder.ToTable("dentists");
+        builder.ToTable("dentists", "shared");
 
         builder.HasKey(d => d.Id);
 

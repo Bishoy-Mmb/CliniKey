@@ -8,7 +8,7 @@ internal sealed class ClinicConfiguration : IEntityTypeConfiguration<Clinic>
 {
     public void Configure(EntityTypeBuilder<Clinic> builder)
     {
-        builder.ToTable("clinics");
+        builder.ToTable("clinics", "shared");
 
         builder.HasKey(c => c.Id);
 
@@ -21,14 +21,49 @@ internal sealed class ClinicConfiguration : IEntityTypeConfiguration<Clinic>
             .IsRequired()
             .HasMaxLength(Clinic.MaxNameLength);
 
+        builder.Property(c => c.Phone)
+            .HasColumnName("phone")
+            .HasConversion(phone => phone.Value, value => CliniKey.Domain.ValueObjects.PhoneNumber.Create(value).Value)
+            .IsRequired()
+            .HasMaxLength(11);
+
+        builder.Property(c => c.Address)
+            .HasColumnName("address")
+            .IsRequired()
+            .HasMaxLength(Clinic.MaxAddressLength);
+
         builder.Property(c => c.SchemaName)
             .HasColumnName("schema_name")
             .IsRequired()
             .HasMaxLength(Clinic.MaxSchemaNameLength);
-        
-        builder.Property(c => c.IsActive)
-            .HasColumnName("is_active")
+
+        builder.Property(c => c.Status)
+            .HasColumnName("status")
+            .HasConversion<string>()
             .IsRequired();
+
+        builder.Property(c => c.ProvisioningStatus)
+            .HasColumnName("provisioning_status")
+            .HasConversion<string>()
+            .IsRequired();
+
+        builder.Property(c => c.SchemaHealthStatus)
+            .HasColumnName("schema_health_status")
+            .HasConversion<string>()
+            .IsRequired();
+
+        builder.Property(c => c.CurrentMigration)
+            .HasColumnName("current_migration")
+            .HasMaxLength(Clinic.MaxMigrationLength);
+
+        builder.Property(c => c.LastSchemaVerifiedAtUtc)
+            .HasColumnName("last_schema_verified_at_utc");
+
+        builder.Property(c => c.DeactivatedAtUtc)
+            .HasColumnName("deactivated_at_utc");
+
+        builder.Property(c => c.DeactivatedByUserId)
+            .HasColumnName("deactivated_by_user_id");
 
         builder.Property(c => c.CreatedAtUtc)
             .HasColumnName("created_at_utc")
@@ -38,5 +73,6 @@ internal sealed class ClinicConfiguration : IEntityTypeConfiguration<Clinic>
             .HasColumnName("updated_at_utc");
 
         builder.HasIndex(c => c.SchemaName).IsUnique();
+        builder.HasIndex(c => c.Phone).IsUnique();
     }
 }

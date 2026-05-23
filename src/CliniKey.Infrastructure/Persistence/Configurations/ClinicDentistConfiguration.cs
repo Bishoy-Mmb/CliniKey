@@ -8,7 +8,7 @@ internal sealed class ClinicDentistConfiguration : IEntityTypeConfiguration<Clin
 {
     public void Configure(EntityTypeBuilder<ClinicDentist> builder)
     {
-        builder.ToTable("clinic_dentists");
+        builder.ToTable("clinic_dentists", "shared");
 
         builder.HasKey(cd => cd.Id);
 
