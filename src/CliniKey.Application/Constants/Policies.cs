@@ -2,6 +2,7 @@ namespace CliniKey.Application.Constants;
 
 public static class Policies
 {
+    public const string CanManageTenants = "CanManageTenants";
     public const string CanInviteStaff = "CanInviteStaff";
     public const string CanManageStaff = "CanManageStaff";
     public const string CanManageAppointments = "CanManageAppointments";
