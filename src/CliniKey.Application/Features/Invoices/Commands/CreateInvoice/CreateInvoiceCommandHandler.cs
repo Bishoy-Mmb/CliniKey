@@ -9,7 +9,8 @@ namespace CliniKey.Application.Features.Invoices.Commands.CreateInvoice;
 internal sealed class CreateInvoiceCommandHandler(
     ITreatmentPlanRepository treatmentPlanRepository,
     IInvoiceRepository invoiceRepository,
-    IUnitOfWork unitOfWork) : ICommandHandler<CreateInvoiceCommand, Guid>
+    IUnitOfWork unitOfWork,
+    TimeProvider clock) : ICommandHandler<CreateInvoiceCommand, Guid>
 {
     public async Task<Result<Guid>> Handle(CreateInvoiceCommand request, CancellationToken cancellationToken)
     {
@@ -19,7 +20,7 @@ internal sealed class CreateInvoiceCommandHandler(
             return Result.Failure<Guid>(Domain.Errors.TreatmentPlanErrors.NotFound(request.TreatmentPlanId));
         }
 
-        var invoiceResult = Invoice.CreateFromTreatmentPlan(treatmentPlan);
+        var invoiceResult = Invoice.CreateFromTreatmentPlan(treatmentPlan, clock);
         if (invoiceResult.IsFailure)
         {
             return Result.Failure<Guid>(invoiceResult.Error);

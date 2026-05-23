@@ -2,23 +2,32 @@ using CliniKey.Domain.Entities;
 using CliniKey.Domain.Enums;
 using CliniKey.Domain.Errors;
 using FluentAssertions;
+using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
 namespace CliniKey.Tests.Domain;
 
 public class AppointmentTests
 {
+    private readonly FakeTimeProvider _clock;
+    private readonly DateTimeOffset _fixedTime = new(2026, 5, 21, 10, 0, 0, TimeSpan.Zero);
+
+    public AppointmentTests()
+    {
+        _clock = new FakeTimeProvider(_fixedTime);
+    }
+
     [Fact]
     public void Schedule_ValidInput_ReturnsAppointment()
     {
         // Arrange
         var patientId = Guid.NewGuid();
         var dentistId = Guid.NewGuid();
-        var startTime = DateTime.UtcNow.AddDays(1);
+        var startTime = _clock.GetUtcNow().UtcDateTime.AddDays(1);
         var endTime = startTime.AddHours(1);
 
         // Act
-        var result = Appointment.Schedule(patientId, dentistId, startTime, endTime, "Checkup");
+        var result = Appointment.Schedule(patientId, dentistId, startTime, endTime, _clock, "Checkup");
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -28,6 +37,7 @@ public class AppointmentTests
         result.Value.StartTime.Should().Be(startTime);
         result.Value.EndTime.Should().Be(endTime);
         result.Value.Status.Should().Be(AppointmentStatus.Scheduled);
+        result.Value.CreatedAtUtc.Should().Be(_fixedTime.UtcDateTime);
         
         result.Value.DomainEvents.Should().ContainSingle(e => e is CliniKey.Domain.Events.AppointmentScheduledEvent);
     }
@@ -36,11 +46,11 @@ public class AppointmentTests
     public void Schedule_PastDate_ReturnsFailure()
     {
         // Arrange
-        var startTime = DateTime.UtcNow.AddDays(-1);
+        var startTime = _clock.GetUtcNow().UtcDateTime.AddDays(-1);
         var endTime = startTime.AddHours(1);
 
         // Act
-        var result = Appointment.Schedule(Guid.NewGuid(), Guid.NewGuid(), startTime, endTime);
+        var result = Appointment.Schedule(Guid.NewGuid(), Guid.NewGuid(), startTime, endTime, _clock);
 
         // Assert
         result.IsFailure.Should().BeTrue();
@@ -51,7 +61,7 @@ public class AppointmentTests
     public void CheckIn_FromScheduled_ChangesStatus()
     {
         // Arrange
-        var appointment = Appointment.Schedule(Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow.AddDays(1), DateTime.UtcNow.AddDays(1).AddHours(1)).Value;
+        var appointment = Appointment.Schedule(Guid.NewGuid(), Guid.NewGuid(), _clock.GetUtcNow().UtcDateTime.AddDays(1), _clock.GetUtcNow().UtcDateTime.AddDays(1).AddHours(1), _clock).Value;
 
         // Act
         var result = appointment.CheckIn();
@@ -65,7 +75,7 @@ public class AppointmentTests
     public void CheckIn_FromCompleted_ReturnsFailure()
     {
         // Arrange
-        var appointment = Appointment.Schedule(Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow.AddDays(1), DateTime.UtcNow.AddDays(1).AddHours(1)).Value;
+        var appointment = Appointment.Schedule(Guid.NewGuid(), Guid.NewGuid(), _clock.GetUtcNow().UtcDateTime.AddDays(1), _clock.GetUtcNow().UtcDateTime.AddDays(1).AddHours(1), _clock).Value;
         appointment.CheckIn();
         appointment.Start();
         appointment.Complete();
@@ -82,7 +92,7 @@ public class AppointmentTests
     public void StateMachine_ValidTransitions()
     {
         // Arrange
-        var appointment = Appointment.Schedule(Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow.AddDays(1), DateTime.UtcNow.AddDays(1).AddHours(1)).Value;
+        var appointment = Appointment.Schedule(Guid.NewGuid(), Guid.NewGuid(), _clock.GetUtcNow().UtcDateTime.AddDays(1), _clock.GetUtcNow().UtcDateTime.AddDays(1).AddHours(1), _clock).Value;
 
         // Act & Assert
         appointment.CheckIn().IsSuccess.Should().BeTrue();
@@ -94,7 +104,7 @@ public class AppointmentTests
     public void Cancel_FromScheduled_ChangesStatus()
     {
         // Arrange
-        var appointment = Appointment.Schedule(Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow.AddDays(1), DateTime.UtcNow.AddDays(1).AddHours(1)).Value;
+        var appointment = Appointment.Schedule(Guid.NewGuid(), Guid.NewGuid(), _clock.GetUtcNow().UtcDateTime.AddDays(1), _clock.GetUtcNow().UtcDateTime.AddDays(1).AddHours(1), _clock).Value;
 
         // Act
         var result = appointment.Cancel();
@@ -108,7 +118,7 @@ public class AppointmentTests
     public void Cancel_FromCompleted_ReturnsFailure()
     {
         // Arrange
-        var appointment = Appointment.Schedule(Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow.AddDays(1), DateTime.UtcNow.AddDays(1).AddHours(1)).Value;
+        var appointment = Appointment.Schedule(Guid.NewGuid(), Guid.NewGuid(), _clock.GetUtcNow().UtcDateTime.AddDays(1), _clock.GetUtcNow().UtcDateTime.AddDays(1).AddHours(1), _clock).Value;
         appointment.CheckIn();
         appointment.Start();
         appointment.Complete();
@@ -125,7 +135,7 @@ public class AppointmentTests
     public void Cancel_FromCancelled_ReturnsFailure()
     {
         // Arrange
-        var appointment = Appointment.Schedule(Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow.AddDays(1), DateTime.UtcNow.AddDays(1).AddHours(1)).Value;
+        var appointment = Appointment.Schedule(Guid.NewGuid(), Guid.NewGuid(), _clock.GetUtcNow().UtcDateTime.AddDays(1), _clock.GetUtcNow().UtcDateTime.AddDays(1).AddHours(1), _clock).Value;
         appointment.Cancel();
 
         // Act

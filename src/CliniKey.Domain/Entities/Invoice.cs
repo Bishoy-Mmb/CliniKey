@@ -19,18 +19,18 @@ public sealed class Invoice : AggregateRoot<Guid>, IAuditableEntity
     public IReadOnlyCollection<InvoiceLine> Lines => _lines.AsReadOnly();
     public IReadOnlyCollection<Payment> Payments => _payments.AsReadOnly();
 
-    private Invoice()
-    {
-    }
+    private Invoice(TimeProvider clock) : base(clock) { }
 
-    public static Result<Invoice> CreateFromTreatmentPlan(TreatmentPlan treatmentPlan)
+    private Invoice() { }
+
+    public static Result<Invoice> CreateFromTreatmentPlan(TreatmentPlan treatmentPlan, TimeProvider clock)
     {
         if (treatmentPlan.Items.Count == 0)
         {
             return Result.Failure<Invoice>(TreatmentPlanErrors.EmptyPlan);
         }
 
-        var invoice = new Invoice
+        var invoice = new Invoice(clock)
         {
             Id = Guid.NewGuid(),
             PatientId = treatmentPlan.PatientId,
@@ -169,7 +169,8 @@ public sealed class Invoice : AggregateRoot<Guid>, IAuditableEntity
             return Result.Failure(InvoiceErrors.Overpayment);
         }
 
-        var payment = new Payment(amount, method, DateTime.UtcNow, referenceNumber);
+        var now = Clock.GetUtcNow().UtcDateTime;
+        var payment = new Payment(amount, method, now, referenceNumber);
         _payments.Add(payment);
 
         var newPaidAmountResult = CalculatePaidAmount();
@@ -178,7 +179,7 @@ public sealed class Invoice : AggregateRoot<Guid>, IAuditableEntity
         if (newPaidAmountResult.Value.Amount >= total.Amount)
         {
             Status = InvoiceStatus.Paid;
-            RaiseDomainEvent(new InvoicePaidEvent(Id, DateTime.UtcNow));
+            RaiseDomainEvent(new InvoicePaidEvent(Id, now));
         }
         else
         {

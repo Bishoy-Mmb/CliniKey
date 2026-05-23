@@ -8,19 +8,24 @@ using CliniKey.SharedKernel.Interfaces;
 using FluentAssertions;
 using NSubstitute;
 
+using Microsoft.Extensions.Time.Testing;
+
 namespace CliniKey.Tests.Application;
 
 public class CreatePatientCommandHandlerTests
 {
     private readonly IPatientRepository _patientRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly FakeTimeProvider _clock;
+    private readonly DateTimeOffset _fixedTime = new(2026, 5, 21, 10, 0, 0, TimeSpan.Zero);
     private readonly CreatePatientCommandHandler _handler;
 
     public CreatePatientCommandHandlerTests()
     {
         _patientRepository = Substitute.For<IPatientRepository>();
         _unitOfWork = Substitute.For<IUnitOfWork>();
-        _handler = new CreatePatientCommandHandler(_patientRepository, _unitOfWork);
+        _clock = new FakeTimeProvider(_fixedTime);
+        _handler = new CreatePatientCommandHandler(_patientRepository, _unitOfWork, _clock);
     }
 
     [Fact]

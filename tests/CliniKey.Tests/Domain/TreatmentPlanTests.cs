@@ -2,12 +2,21 @@ using CliniKey.Domain.Entities;
 using CliniKey.Domain.Enums;
 using CliniKey.Domain.ValueObjects;
 using FluentAssertions;
+using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
 namespace CliniKey.Tests.Domain;
 
 public class TreatmentPlanTests
 {
+    private readonly FakeTimeProvider _clock;
+    private readonly DateTimeOffset _fixedTime = new(2026, 5, 21, 10, 0, 0, TimeSpan.Zero);
+
+    public TreatmentPlanTests()
+    {
+        _clock = new FakeTimeProvider(_fixedTime);
+    }
+
     [Fact]
     public void Create_WithItems_ComputesTotal()
     {
@@ -24,12 +33,13 @@ public class TreatmentPlanTests
         };
 
         // Act
-        var result = TreatmentPlan.Create(Guid.NewGuid(), Guid.NewGuid(), items);
+        var result = TreatmentPlan.Create(Guid.NewGuid(), Guid.NewGuid(), items, _clock);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.Items.Should().HaveCount(2);
         result.Value.CalculateTotalEstimatedCost().Value.Amount.Should().Be(1200m);
+        result.Value.CreatedAtUtc.Should().Be(_fixedTime.UtcDateTime);
     }
 
     [Fact]
@@ -40,7 +50,7 @@ public class TreatmentPlanTests
         {
             (ToothCode.Create(11).Value, "Filling", Money.Create(500m, "EGP").Value)
         };
-        var plan = TreatmentPlan.Create(Guid.NewGuid(), Guid.NewGuid(), items).Value;
+        var plan = TreatmentPlan.Create(Guid.NewGuid(), Guid.NewGuid(), items, _clock).Value;
 
         // Act
         var result = plan.Approve();
@@ -58,7 +68,7 @@ public class TreatmentPlanTests
         var items = new List<(ToothCode, string, Money)>();
 
         // Act
-        var result = TreatmentPlan.Create(Guid.NewGuid(), Guid.NewGuid(), items);
+        var result = TreatmentPlan.Create(Guid.NewGuid(), Guid.NewGuid(), items, _clock);
 
         // Assert
         result.IsFailure.Should().BeTrue();
@@ -72,7 +82,7 @@ public class TreatmentPlanTests
         {
             (ToothCode.Create(11).Value, "Filling", Money.Create(500m, "EGP").Value)
         };
-        var plan = TreatmentPlan.Create(Guid.NewGuid(), Guid.NewGuid(), items).Value;
+        var plan = TreatmentPlan.Create(Guid.NewGuid(), Guid.NewGuid(), items, _clock).Value;
         plan.Approve();
 
         var result = plan.Approve();
@@ -88,7 +98,7 @@ public class TreatmentPlanTests
         {
             (ToothCode.Create(11).Value, "Filling", Money.Create(500m, "EGP").Value)
         };
-        var plan = TreatmentPlan.Create(Guid.NewGuid(), Guid.NewGuid(), items).Value;
+        var plan = TreatmentPlan.Create(Guid.NewGuid(), Guid.NewGuid(), items, _clock).Value;
         
         var result = plan.StartItem(plan.Items.First().Id);
 
@@ -103,7 +113,7 @@ public class TreatmentPlanTests
         {
             (ToothCode.Create(11).Value, "Filling", Money.Create(500m, "EGP").Value)
         };
-        var plan = TreatmentPlan.Create(Guid.NewGuid(), Guid.NewGuid(), items).Value;
+        var plan = TreatmentPlan.Create(Guid.NewGuid(), Guid.NewGuid(), items, _clock).Value;
         plan.Approve();
         var itemId = plan.Items.First().Id;
         plan.StartItem(itemId);
@@ -122,7 +132,7 @@ public class TreatmentPlanTests
             (ToothCode.Create(11).Value, "Filling", Money.Create(500m, "EGP").Value),
             (ToothCode.Create(12).Value, "Extraction", Money.Create(700m, "EGP").Value)
         };
-        var plan = TreatmentPlan.Create(Guid.NewGuid(), Guid.NewGuid(), items).Value;
+        var plan = TreatmentPlan.Create(Guid.NewGuid(), Guid.NewGuid(), items, _clock).Value;
         plan.Approve();
         
         var itemsArray = plan.Items.ToArray();
@@ -146,7 +156,7 @@ public class TreatmentPlanTests
         {
             (ToothCode.Create(11).Value, "Filling", Money.Create(500m, "EGP").Value)
         };
-        var plan = TreatmentPlan.Create(Guid.NewGuid(), Guid.NewGuid(), items).Value;
+        var plan = TreatmentPlan.Create(Guid.NewGuid(), Guid.NewGuid(), items, _clock).Value;
         plan.Approve();
         var itemId = plan.Items.First().Id;
         plan.StartItem(itemId);
@@ -179,7 +189,7 @@ public class TreatmentPlanTests
         };
 
         // Act
-        var result = TreatmentPlan.Create(Guid.NewGuid(), Guid.NewGuid(), items);
+        var result = TreatmentPlan.Create(Guid.NewGuid(), Guid.NewGuid(), items, _clock);
 
         // Assert
         result.IsFailure.Should().BeTrue();

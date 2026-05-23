@@ -15,7 +15,8 @@ public sealed class Appointment : AggregateRoot<Guid>, IAuditableEntity
     public AppointmentStatus Status { get; private set; }
     public string? Notes { get; private set; }
 
-    private Appointment(Guid id, Guid patientId, Guid dentistId, DateTime startTime, DateTime endTime, string? notes)
+    private Appointment(Guid id, Guid patientId, Guid dentistId, DateTime startTime, DateTime endTime, string? notes, TimeProvider clock)
+        : base(clock)
     {
         Id = id;
         PatientId = patientId;
@@ -28,16 +29,18 @@ public sealed class Appointment : AggregateRoot<Guid>, IAuditableEntity
 
     private Appointment() { }
 
-    public static Result<Appointment> Schedule(Guid patientId, Guid dentistId, DateTime startTime, DateTime endTime, string? notes = null)
+    public static Result<Appointment> Schedule(Guid patientId, Guid dentistId, DateTime startTime, DateTime endTime, TimeProvider clock, string? notes = null)
     {
-        if (startTime < DateTime.UtcNow)
+        var now = clock.GetUtcNow().UtcDateTime;
+
+        if (startTime < now)
         {
             return Result.Failure<Appointment>(AppointmentErrors.PastDate);
         }
 
-        var appointment = new Appointment(Guid.NewGuid(), patientId, dentistId, startTime, endTime, notes);
+        var appointment = new Appointment(Guid.NewGuid(), patientId, dentistId, startTime, endTime, notes, clock);
 
-        appointment.RaiseDomainEvent(new AppointmentScheduledEvent(appointment.Id, DateTime.UtcNow));
+        appointment.RaiseDomainEvent(new AppointmentScheduledEvent(appointment.Id, now));
 
         return appointment;
     }
@@ -88,8 +91,9 @@ public sealed class Appointment : AggregateRoot<Guid>, IAuditableEntity
 
     private void ChangeStatus(AppointmentStatus newStatus)
     {
+        var now = Clock.GetUtcNow().UtcDateTime;
         var oldStatus = Status;
         Status = newStatus;
-        RaiseDomainEvent(new AppointmentStatusChangedEvent(Id, oldStatus, newStatus, DateTime.UtcNow));
+        RaiseDomainEvent(new AppointmentStatusChangedEvent(Id, oldStatus, newStatus, now));
     }
 }

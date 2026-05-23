@@ -4,7 +4,7 @@ namespace CliniKey.Application.Features.Patients.Commands.CreatePatient;
 
 public sealed class CreatePatientCommandValidator : AbstractValidator<CreatePatientCommand>
 {
-    public CreatePatientCommandValidator()
+    public CreatePatientCommandValidator(TimeProvider clock)
     {
         RuleFor(x => x.FirstName)
             .NotEmpty().WithMessage("First name is required.")
@@ -20,7 +20,7 @@ public sealed class CreatePatientCommandValidator : AbstractValidator<CreatePati
 
         RuleFor(x => x.DateOfBirth)
             .NotEmpty().WithMessage("Date of birth is required.")
-            .LessThan(DateOnly.FromDateTime(DateTime.UtcNow)).WithMessage("Date of birth must be in the past.");
+            .LessThan(DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime)).WithMessage("Date of birth must be in the past.");
 
         RuleFor(x => x.Gender)
             .IsInEnum().WithMessage("Invalid gender.");

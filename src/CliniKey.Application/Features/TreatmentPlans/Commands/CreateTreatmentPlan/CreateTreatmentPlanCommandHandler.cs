@@ -9,7 +9,8 @@ namespace CliniKey.Application.Features.TreatmentPlans.Commands.CreateTreatmentP
 
 internal sealed class CreateTreatmentPlanCommandHandler(
     ITreatmentPlanRepository treatmentPlanRepository,
-    IUnitOfWork unitOfWork) : ICommandHandler<CreateTreatmentPlanCommand, Guid>
+    IUnitOfWork unitOfWork,
+    TimeProvider clock) : ICommandHandler<CreateTreatmentPlanCommand, Guid>
 {
     private const string DefaultCurrency = "EGP";
 
@@ -39,7 +40,7 @@ internal sealed class CreateTreatmentPlanCommandHandler(
             items.Add((toothResult.Value, item.ProcedureName, moneyResult.Value));
         }
 
-        var planResult = TreatmentPlan.Create(request.PatientId, request.DentistId, items);
+        var planResult = TreatmentPlan.Create(request.PatientId, request.DentistId, items, clock);
         if (planResult.IsFailure)
         {
             return Result.Failure<Guid>(planResult.Error);

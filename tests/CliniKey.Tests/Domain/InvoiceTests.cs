@@ -3,12 +3,21 @@ using CliniKey.Domain.Enums;
 using CliniKey.Domain.Errors;
 using CliniKey.Domain.ValueObjects;
 using FluentAssertions;
+using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
 namespace CliniKey.Tests.Domain;
 
 public class InvoiceTests
 {
+    private readonly FakeTimeProvider _clock;
+    private readonly DateTimeOffset _fixedTime = new(2026, 5, 21, 10, 0, 0, TimeSpan.Zero);
+
+    public InvoiceTests()
+    {
+        _clock = new FakeTimeProvider(_fixedTime);
+    }
+
     [Fact]
     public void CreateFromTreatmentPlan_CalculatesVAT()
     {
@@ -19,11 +28,11 @@ public class InvoiceTests
         { 
             (toothCodeResult.Value, "Checkup", moneyResult.Value) 
         };
-        var planResult = TreatmentPlan.Create(Guid.NewGuid(), Guid.NewGuid(), items);
+        var planResult = TreatmentPlan.Create(Guid.NewGuid(), Guid.NewGuid(), items, _clock);
         var plan = planResult.Value;
 
         // Act
-        var result = Invoice.CreateFromTreatmentPlan(plan);
+        var result = Invoice.CreateFromTreatmentPlan(plan, _clock);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -32,6 +41,7 @@ public class InvoiceTests
         line.CalculateVatAmount().Value.Amount.Should().Be(14m); // 100 * 0.14
         result.Value.CalculateTotal().Value.Amount.Should().Be(114m);
         result.Value.Status.Should().Be(InvoiceStatus.Draft);
+        result.Value.CreatedAtUtc.Should().Be(_fixedTime.UtcDateTime);
     }
 
     [Fact]
@@ -44,8 +54,8 @@ public class InvoiceTests
         { 
             (toothCodeResult.Value, "Checkup", moneyResult.Value) 
         };
-        var plan = TreatmentPlan.Create(Guid.NewGuid(), Guid.NewGuid(), items).Value;
-        var invoice = Invoice.CreateFromTreatmentPlan(plan).Value;
+        var plan = TreatmentPlan.Create(Guid.NewGuid(), Guid.NewGuid(), items, _clock).Value;
+        var invoice = Invoice.CreateFromTreatmentPlan(plan, _clock).Value;
         invoice.Issue(); // 114 EGP total
 
         // Act
@@ -68,8 +78,8 @@ public class InvoiceTests
         { 
             (toothCodeResult.Value, "Checkup", moneyResult.Value) 
         };
-        var plan = TreatmentPlan.Create(Guid.NewGuid(), Guid.NewGuid(), items).Value;
-        var invoice = Invoice.CreateFromTreatmentPlan(plan).Value;
+        var plan = TreatmentPlan.Create(Guid.NewGuid(), Guid.NewGuid(), items, _clock).Value;
+        var invoice = Invoice.CreateFromTreatmentPlan(plan, _clock).Value;
         invoice.Issue();
 
         // Act
@@ -91,8 +101,8 @@ public class InvoiceTests
         { 
             (toothCodeResult.Value, "Checkup", moneyResult.Value) 
         };
-        var plan = TreatmentPlan.Create(Guid.NewGuid(), Guid.NewGuid(), items).Value;
-        var invoice = Invoice.CreateFromTreatmentPlan(plan).Value;
+        var plan = TreatmentPlan.Create(Guid.NewGuid(), Guid.NewGuid(), items, _clock).Value;
+        var invoice = Invoice.CreateFromTreatmentPlan(plan, _clock).Value;
         invoice.Issue();
 
         // Act

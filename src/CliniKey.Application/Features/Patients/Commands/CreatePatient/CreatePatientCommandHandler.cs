@@ -12,11 +12,13 @@ internal sealed class CreatePatientCommandHandler : ICommandHandler<CreatePatien
 {
     private readonly IPatientRepository _patientRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _clock;
 
-    public CreatePatientCommandHandler(IPatientRepository patientRepository, IUnitOfWork unitOfWork)
+    public CreatePatientCommandHandler(IPatientRepository patientRepository, IUnitOfWork unitOfWork, TimeProvider clock)
     {
         _patientRepository = patientRepository;
         _unitOfWork = unitOfWork;
+        _clock = clock;
     }
 
     public async Task<Result<Guid>> Handle(CreatePatientCommand request, CancellationToken cancellationToken)
@@ -43,6 +45,7 @@ internal sealed class CreatePatientCommandHandler : ICommandHandler<CreatePatien
             phoneResult.Value,
             request.DateOfBirth,
             request.Gender,
+            _clock,
             request.InsuranceDetails);
 
         _patientRepository.Add(patient);

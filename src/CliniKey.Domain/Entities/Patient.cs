@@ -23,7 +23,8 @@ public sealed class Patient : AggregateRoot<Guid>, IAuditableEntity, ISoftDeleta
         PhoneNumber phone,
         DateOnly dateOfBirth,
         Gender gender,
-        string? insuranceDetails)
+        string? insuranceDetails,
+        TimeProvider clock) : base(clock)
     {
         Id = id;
         Name = name;
@@ -44,17 +45,21 @@ public sealed class Patient : AggregateRoot<Guid>, IAuditableEntity, ISoftDeleta
         PhoneNumber phone,
         DateOnly dateOfBirth,
         Gender gender,
+        TimeProvider clock,
         string? insuranceDetails = null)
     {
+        var now = clock.GetUtcNow().UtcDateTime;
+
         var patient = new Patient(
             Guid.NewGuid(),
             name,
             phone,
             dateOfBirth,
             gender,
-            insuranceDetails);
+            insuranceDetails,
+            clock);
 
-        patient.RaiseDomainEvent(new PatientCreatedEvent(patient.Id, DateTime.UtcNow));
+        patient.RaiseDomainEvent(new PatientCreatedEvent(patient.Id, now));
 
         return patient;
     }
@@ -77,7 +82,7 @@ public sealed class Patient : AggregateRoot<Guid>, IAuditableEntity, ISoftDeleta
         if (!IsDeleted)
         {
             IsDeleted = true;
-            DeletedAtUtc = DateTime.UtcNow;
+            DeletedAtUtc = Clock.GetUtcNow().UtcDateTime;
         }
     }
 }

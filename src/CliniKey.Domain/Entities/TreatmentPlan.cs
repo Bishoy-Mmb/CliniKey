@@ -44,12 +44,13 @@ public sealed class TreatmentPlan : AggregateRoot<Guid>, IAuditableEntity
         return total;
     }
 
-    private TreatmentPlan()
-    {
-    }
+    private TreatmentPlan(TimeProvider clock) : base(clock) { }
 
-    public static Result<TreatmentPlan> Create(Guid patientId, Guid dentistId, IEnumerable<(ToothCode Tooth, string ProcedureName, Money EstimatedCost)> items)
+    private TreatmentPlan() { }
+
+    public static Result<TreatmentPlan> Create(Guid patientId, Guid dentistId, IEnumerable<(ToothCode Tooth, string ProcedureName, Money EstimatedCost)> items, TimeProvider clock)
     {
+        var now = clock.GetUtcNow().UtcDateTime;
         var itemList = items.ToList();
         if (itemList.Count == 0)
         {
@@ -62,7 +63,7 @@ public sealed class TreatmentPlan : AggregateRoot<Guid>, IAuditableEntity
             return Result.Failure<TreatmentPlan>(TreatmentPlanErrors.MixedCurrencies);
         }
 
-        var plan = new TreatmentPlan
+        var plan = new TreatmentPlan(clock)
         {
             Id = Guid.NewGuid(),
             PatientId = patientId,
@@ -75,7 +76,7 @@ public sealed class TreatmentPlan : AggregateRoot<Guid>, IAuditableEntity
             plan._items.Add(new TreatmentItem(item.Tooth, item.ProcedureName, item.EstimatedCost));
         }
 
-        plan.RaiseDomainEvent(new TreatmentPlanCreatedEvent(plan.Id, DateTime.UtcNow));
+        plan.RaiseDomainEvent(new TreatmentPlanCreatedEvent(plan.Id, now));
 
         return plan;
     }
@@ -87,8 +88,9 @@ public sealed class TreatmentPlan : AggregateRoot<Guid>, IAuditableEntity
             return Result.Failure(TreatmentPlanErrors.InvalidTransition);
         }
 
+        var now = Clock.GetUtcNow().UtcDateTime;
         Status = TreatmentPlanStatus.Approved;
-        RaiseDomainEvent(new TreatmentPlanApprovedEvent(Id, DateTime.UtcNow));
+        RaiseDomainEvent(new TreatmentPlanApprovedEvent(Id, now));
         MarkUpdated();
 
         return Result.Success();

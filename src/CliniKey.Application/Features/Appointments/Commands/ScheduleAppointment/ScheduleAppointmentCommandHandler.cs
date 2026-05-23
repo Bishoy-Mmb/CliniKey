@@ -11,13 +11,16 @@ internal sealed class ScheduleAppointmentCommandHandler : ICommandHandler<Schedu
 {
     private readonly IAppointmentRepository _appointmentRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _clock;
 
     public ScheduleAppointmentCommandHandler(
         IAppointmentRepository appointmentRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        TimeProvider clock)
     {
         _appointmentRepository = appointmentRepository;
         _unitOfWork = unitOfWork;
+        _clock = clock;
     }
 
     public async Task<Result<Guid>> Handle(ScheduleAppointmentCommand request, CancellationToken cancellationToken)
@@ -28,7 +31,7 @@ internal sealed class ScheduleAppointmentCommandHandler : ICommandHandler<Schedu
             return Result.Failure<Guid>(AppointmentErrors.TimeConflict);
         }
 
-        var appointmentResult = Appointment.Schedule(request.PatientId, request.DentistId, request.StartTime, request.EndTime, request.Notes);
+        var appointmentResult = Appointment.Schedule(request.PatientId, request.DentistId, request.StartTime, request.EndTime, _clock, request.Notes);
         if (appointmentResult.IsFailure)
         {
             return Result.Failure<Guid>(appointmentResult.Error);
