@@ -1,95 +1,75 @@
 # Code Reading Guide: Tenant Provisioning
 
-This guide is a practical study plan. Follow it when you want to understand the
-feature line by line without feeling like the whole codebase is attacking you at
-once.
+Use this guide when you want to study the implementation without reading files in
+alphabetical order. The feature is best understood as flows.
 
 ## Before You Start
 
-Use this mindset:
+Hold this model in your head:
 
-> I am not trying to read files. I am trying to understand flows.
+```text
+Tenant = practice isolation boundary
+Clinic = branch/location under a tenant
+```
 
-The same feature appears in several layers. If you read by folder alphabetically,
-the architecture will feel random. If you read by flow, the design starts to make
-sense.
+If a field decides schema access, provisioning, health, or migration state, it
+belongs to `Tenant`. If a field describes a branch's contact information or local
+status, it belongs to `Clinic`.
 
-## Study Pass 1: The Domain Story
+## Study Pass 1: Domain Boundary
 
-Start with:
+Read:
 
+- [Tenant.cs](../../src/CliniKey.Domain/Entities/Tenant.cs)
 - [Clinic.cs](../../src/CliniKey.Domain/Entities/Clinic.cs)
-- [ClinicErrors.cs](../../src/CliniKey.Domain/Errors/ClinicErrors.cs)
 - [TenantErrors.cs](../../src/CliniKey.Domain/Errors/TenantErrors.cs)
+- [ClinicErrors.cs](../../src/CliniKey.Domain/Errors/ClinicErrors.cs)
+- [TenantTests.cs](../../tests/CliniKey.Tests/Domain/TenantTests.cs)
 - [ClinicTests.cs](../../tests/CliniKey.Tests/Domain/ClinicTests.cs)
 
-Ask these questions while reading:
+Ask:
 
 | Question | What you are learning |
 | --- | --- |
-| Why is `SchemaName` `private init`? | Some data must be immutable after creation |
-| Why does `Create` return `Result<Clinic>`? | Expected failures are part of the API |
-| Why are state changes methods? | Transitions need rules, timestamps, and events |
-| Why is `TimeProvider` used? | Time should be deterministic in tests |
-| Why are max lengths constants? | Domain validation and EF mapping must agree |
+| Why does `Tenant` own `SchemaName`? | Isolation belongs to the practice, not a branch |
+| Why does `Clinic` have `TenantId`? | A branch is attached to a practice |
+| Why does `Tenant.Create` raise `TenantCreatedEvent`? | Aggregate creation should be visible to domain event flows |
+| Why are provisioning and health separate? | A tenant can exist before it is safe to serve |
+| Why do both aggregates still have lifecycle methods? | Tenant access and branch status are related but not identical |
 
-### Mini Exercise
+Mini exercise: explain why `CurrentMigration` on `Clinic` would be wrong once a
+practice has two branches.
 
-Trace what happens when `Deactivate` is called:
-
-1. What state prevents the operation?
-2. Which fields change?
-3. Which timestamp is captured?
-4. Which domain event is raised?
-5. Which test proves this?
-
-If you can answer that, you are reading the aggregate correctly.
-
-## Study Pass 2: The Use Case
+## Study Pass 2: Onboarding Use Case
 
 Read:
 
 - [OnboardClinicCommand.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardClinic/OnboardClinicCommand.cs)
 - [OnboardClinicCommandValidator.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardClinic/OnboardClinicCommandValidator.cs)
 - [OnboardClinicCommandHandler.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardClinic/OnboardClinicCommandHandler.cs)
+- [OnboardClinicResponse.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardClinic/OnboardClinicResponse.cs)
 - [OnboardClinicCommandHandlerTests.cs](../../tests/CliniKey.Tests/Application/OnboardClinicCommandHandlerTests.cs)
 
-Focus on orchestration.
-
-The handler is not "business rules only" and not "database details". It is the
-application story:
+Trace this sequence:
 
 ```text
-input -> validation -> duplicate check -> aggregate creation -> save -> provision -> finalize
+phone validation
+  -> duplicate branch phone check
+  -> tenant id + clinic id generation
+  -> schema name generation from tenant id
+  -> Tenant.Create
+  -> Clinic.Create
+  -> tenant.MarkProvisioning
+  -> save shared rows
+  -> provision schema
+  -> tenant.MarkProvisioned
+  -> save final tenant state
 ```
 
-### What To Notice
+Mini exercise: find exactly where a provisioning failure removes both the clinic
+and the tenant registry row.
 
-The handler depends on interfaces:
-
-- `IClinicRepository`
-- `ITenantProvisioningService`
-- `ICurrentUserService`
-- `IUnitOfWork`
-- `TimeProvider`
-
-That means the handler can be tested without PostgreSQL and without ASP.NET.
-
-### Mini Exercise
-
-Pretend provisioning fails.
-
-Find the exact lines where:
-
-1. The failure comes back from infrastructure.
-2. The clinic is removed from the repository.
-3. Unit of work saves the removal.
-4. The failure returns to the API.
-
-This teaches you compensation flow, which is one of the biggest production
-differences from tutorial code.
-
-## Study Pass 3: Infrastructure Reality
+## Study Pass 3: Provisioning Infrastructure
 
 Read:
 
@@ -99,274 +79,175 @@ Read:
 - [TenantProvisioningIntegrationTests.cs](../../tests/CliniKey.Tests/Infrastructure/TenantProvisioningIntegrationTests.cs)
 - [TenantMigrationServiceTests.cs](../../tests/CliniKey.Tests/Infrastructure/TenantMigrationServiceTests.cs)
 
-### What To Notice
+Look for:
 
-Infrastructure code is allowed to know PostgreSQL details:
-
-- `NpgsqlConnection`
-- `CREATE SCHEMA`
-- `DROP SCHEMA`
-- `pg_advisory_xact_lock`
+- advisory lock acquisition
+- schema identifier quoting
+- `CREATE SCHEMA IF NOT EXISTS`
+- baseline operational tables
 - `__EFMigrationsHistory`
-- schema-qualified SQL
+- schema drop compensation
+- audit log writes
 
-The Domain and Application layers should not know these details.
+Mini exercise: make a table with three rows: schema creation failure, migration
+failure, and audit failure. For each, write what cleanup the current code attempts.
 
-### Mini Exercise
+## Study Pass 4: Shared Registry And Mappings
 
-Read `TenantProvisioningService.ProvisionAsync` and make a failure table:
+Read:
 
-| Failure point | Cleanup attempted | Error returned |
-| --- | --- | --- |
-| schema creation exception | drop schema | provisioning failed |
-| migration failure | drop schema | provisioning failed |
-| audit log failure | inspect behavior | inspect behavior |
+- [SharedDbContext.cs](../../src/CliniKey.Infrastructure/Persistence/SharedDbContext.cs)
+- [AppDbContext.cs](../../src/CliniKey.Infrastructure/Persistence/AppDbContext.cs)
+- [TenantConfiguration.cs](../../src/CliniKey.Infrastructure/Persistence/Configurations/TenantConfiguration.cs)
+- [ClinicConfiguration.cs](../../src/CliniKey.Infrastructure/Persistence/Configurations/ClinicConfiguration.cs)
+- [TenantRepository.cs](../../src/CliniKey.Infrastructure/Persistence/Repositories/TenantRepository.cs)
+- [ClinicRepository.cs](../../src/CliniKey.Infrastructure/Persistence/Repositories/ClinicRepository.cs)
+- [SharedSchemaMappingTests.cs](../../tests/CliniKey.Tests/Infrastructure/SharedSchemaMappingTests.cs)
 
-The goal is to see how production code thinks about partial completion.
+Ask:
 
-## Study Pass 4: Request Tenant Resolution
+| Question | Why it matters |
+| --- | --- |
+| Why does `AppDbContext` exclude shared tables from tenant migrations? | Tenant schemas should not create registry tables |
+| Why does `SharedDbContext` seed a dev tenant and clinic? | Local development needs a known registry shape |
+| Why does `TenantRepository.ListAsync` optionally require clinics? | Clinic-list pagination should not count tenant rows without branches |
+| Why are phone uniqueness checks on `ClinicRepository`? | Phone belongs to branch contact data |
+
+Mini exercise: follow the `Tenant` to `Clinic` relationship from configuration to
+repository query.
+
+## Study Pass 5: Request Resolution
 
 Read:
 
 - [TenantResolutionMiddleware.cs](../../src/CliniKey.API/Middleware/TenantResolutionMiddleware.cs)
 - [TenantRegistry.cs](../../src/CliniKey.Infrastructure/Persistence/TenantRegistry.cs)
+- [ITenantRegistry.cs](../../src/CliniKey.Application/Abstractions/Tenancy/ITenantRegistry.cs)
 - [TenantContext.cs](../../src/CliniKey.Infrastructure/Persistence/TenantContext.cs)
 - [TenantResolutionMiddlewareTests.cs](../../tests/CliniKey.Tests/API/TenantResolutionMiddlewareTests.cs)
+- [TenantLifecycleAccessTests.cs](../../tests/CliniKey.Tests/Infrastructure/TenantLifecycleAccessTests.cs)
 
-### The Flow
+The registry gate should reject:
 
-```text
-authenticated request
-  -> read tenant_id claim
-  -> resolve tenant in shared.clinics
-  -> reject inactive or unhealthy tenant
-  -> store schema in TenantContext
-  -> continue request
-```
+- missing tenant row
+- inactive tenant
+- not-provisioned tenant
+- unhealthy schema
 
-### What To Notice
+Mini exercise: explain why `TenantStatus.Active` is not enough without
+`TenantProvisioningStatus.Provisioned`.
 
-The middleware returns before the handler if:
-
-- the user is unauthenticated
-- the tenant claim is missing or invalid
-- the tenant does not exist
-- the tenant is inactive
-- the schema is unhealthy
-
-This is defensive design. The goal is to prevent invalid requests from reaching
-business handlers at all.
-
-### Mini Exercise
-
-Pick one failure case from the middleware tests. Then find:
-
-1. The mocked registry result.
-2. The expected HTTP status code.
-3. The `ProblemDetails` title/detail.
-4. Whether `next` was called.
-
-If `next` is called on an invalid tenant, tenant isolation is broken.
-
-## Study Pass 5: Search Path And Data Access
+## Study Pass 6: Search Path And Tenant Data Access
 
 Read:
 
 - [TenantConnectionInterceptor.cs](../../src/CliniKey.Infrastructure/Persistence/TenantConnectionInterceptor.cs)
 - [DbConnectionFactory.cs](../../src/CliniKey.Infrastructure/Persistence/DbConnectionFactory.cs)
 - [IDbConnectionFactory.cs](../../src/CliniKey.Application/Abstractions/Data/IDbConnectionFactory.cs)
-- One Dapper query handler, for example:
-  - [ListPatientsQueryHandler.cs](../../src/CliniKey.Application/Features/Patients/Queries/ListPatients/ListPatientsQueryHandler.cs)
 - [TenantSchemaSwitchingTests.cs](../../tests/CliniKey.Tests/Infrastructure/TenantSchemaSwitchingTests.cs)
 - [TenantDapperConnectionTests.cs](../../tests/CliniKey.Tests/Infrastructure/TenantDapperConnectionTests.cs)
 - [TenantConcurrentIsolationTests.cs](../../tests/CliniKey.Tests/Infrastructure/TenantConcurrentIsolationTests.cs)
 
-### The Crucial Idea
-
-Search path is connection state. Connection state is dangerous because connections
-are pooled.
-
-That is why the app sets search path each time it opens a tenant connection.
-
-### EF Core Path
+The key idea:
 
 ```text
-AppDbContext opens connection
-  -> TenantConnectionInterceptor runs
-  -> SET search_path TO tenant_x, shared, public
-  -> EF query executes
+search_path is connection state
+connection state is pooled
+therefore every tenant connection must be prepared on open
 ```
 
-### Dapper Path
+Mini exercise: find a Dapper query handler for tenant operational data and verify
+it uses a tenant-aware connection path.
 
-```text
-Query handler asks for CreateTenantConnection
-  -> DbConnectionFactory checks TenantContext
-  -> opens NpgsqlConnection
-  -> SET search_path TO tenant_x, shared, public
-  -> Dapper query executes
-```
-
-### Mini Exercise
-
-Search for:
-
-```text
-CreateConnection()
-```
-
-and:
-
-```text
-CreateTenantConnection()
-```
-
-For every query handler, decide whether it should read shared data or tenant data.
-Tenant data should use `CreateTenantConnection`.
-
-This is exactly the kind of review habit senior engineers build.
-
-## Study Pass 6: Shared Schema
+## Study Pass 7: Auth And Identity
 
 Read:
 
-- [SharedDbContext.cs](../../src/CliniKey.Infrastructure/Persistence/SharedDbContext.cs)
-- [ClinicConfiguration.cs](../../src/CliniKey.Infrastructure/Persistence/Configurations/ClinicConfiguration.cs)
-- [DentistConfiguration.cs](../../src/CliniKey.Infrastructure/Persistence/Configurations/DentistConfiguration.cs)
-- [ClinicDentistConfiguration.cs](../../src/CliniKey.Infrastructure/Persistence/Configurations/ClinicDentistConfiguration.cs)
-- [SharedSchemaMappingTests.cs](../../tests/CliniKey.Tests/Infrastructure/SharedSchemaMappingTests.cs)
-- [CrossTenantDentistQueryTests.cs](../../tests/CliniKey.Tests/Infrastructure/CrossTenantDentistQueryTests.cs)
+- [AuthService.cs](../../src/CliniKey.Infrastructure/Identity/AuthService.cs)
+- [ApplicationUser.cs](../../src/CliniKey.Infrastructure/Identity/ApplicationUser.cs)
+- [JwtTokenService.cs](../../src/CliniKey.Infrastructure/Identity/JwtTokenService.cs)
+- [CurrentUserService.cs](../../src/CliniKey.Infrastructure/Identity/CurrentUserService.cs)
 
-### What To Notice
+What changed conceptually:
 
-`Clinic`, `Dentist`, and `ClinicDentist` are cross-tenant registry concepts. They
-must remain reachable even when the current connection's search path points at a
-tenant schema.
+- Registration still accepts a clinic ID.
+- Auth loads the clinic, then stores the owning tenant ID on the user.
+- JWTs carry `tenant_id`.
+- Middleware resolves the tenant from that claim.
 
-That is why they are mapped to `shared`.
+Mini exercise: explain why storing `clinicId` as the user tenant claim would break
+after the tenant/practice refactor.
 
-If these mappings were ambiguous, a tenant search path could accidentally create or
-query the wrong table.
-
-## Study Pass 7: Lifecycle And Operations
+## Study Pass 8: Day-Two Operations
 
 Read:
 
-- [ActivateClinic command folder](../../src/CliniKey.Application/Features/Tenants/Commands/ActivateClinic/)
-- [DeactivateClinic command folder](../../src/CliniKey.Application/Features/Tenants/Commands/DeactivateClinic/)
-- [MigrateTenantSchemas command folder](../../src/CliniKey.Application/Features/Tenants/Commands/MigrateTenantSchemas/)
-- [GetTenantSchemaHealth query folder](../../src/CliniKey.Application/Features/Tenants/Queries/GetTenantSchemaHealth/)
+- [ActivateClinicCommandHandler.cs](../../src/CliniKey.Application/Features/Tenants/Commands/ActivateClinic/ActivateClinicCommandHandler.cs)
+- [DeactivateClinicCommandHandler.cs](../../src/CliniKey.Application/Features/Tenants/Commands/DeactivateClinic/DeactivateClinicCommandHandler.cs)
+- [MigrateTenantSchemasCommandHandler.cs](../../src/CliniKey.Application/Features/Tenants/Commands/MigrateTenantSchemas/MigrateTenantSchemasCommandHandler.cs)
+- [GetTenantSchemaHealthQueryHandler.cs](../../src/CliniKey.Application/Features/Tenants/Queries/GetTenantSchemaHealth/GetTenantSchemaHealthQueryHandler.cs)
 - [ClinicLifecycleCommandHandlerTests.cs](../../tests/CliniKey.Tests/Application/ClinicLifecycleCommandHandlerTests.cs)
-- [TenantLifecycleAccessTests.cs](../../tests/CliniKey.Tests/Infrastructure/TenantLifecycleAccessTests.cs)
+- [TenantMigrationCommandHandlerTests.cs](../../tests/CliniKey.Tests/Application/TenantMigrationCommandHandlerTests.cs)
 
-### What To Notice
-
-The platform does not delete tenant data when a clinic is deactivated. It blocks
-access by changing lifecycle state.
-
-That is a production-grade data decision:
-
-- preserve history
-- avoid destructive admin actions
-- allow reactivation
-- keep auditability
+Notice that the lifecycle endpoint still receives `clinicId` for API continuity,
+then acts on the owning tenant. That is a V1 compatibility choice. Future
+multi-branch work should revisit naming and semantics.
 
 ## Important Terms
 
-| Term | Meaning in this feature |
+| Term | Meaning |
 | --- | --- |
-| Tenant | A clinic using the system with isolated operational data |
-| Control plane | Platform-level management of tenants |
-| Data plane | Normal tenant-scoped application behavior |
-| Shared schema | Cross-tenant registry and relationship data |
-| Tenant schema | Per-clinic operational data schema |
-| Search path | PostgreSQL setting controlling which schema unqualified table names use |
-| Provisioning | Creating tenant schema and applying baseline migrations |
-| Compensation | Cleanup performed after a partial failure |
-| Registry | Shared lookup from tenant ID to schema/status/health |
-| Health status | Whether a tenant schema is safe to serve |
+| Tenant | Practice isolation boundary |
+| Clinic | Branch/location under a tenant |
+| Control plane | Platform operations over shared registry data |
+| Data plane | Tenant-scoped operational app behavior |
+| Provisioning status | Whether schema creation/migration workflow has completed |
+| Schema health | Whether the tenant schema is safe to serve |
+| Current migration | The latest migration known for a tenant schema |
+| Search path | PostgreSQL setting that chooses which schema unqualified tables hit |
+| Compensation | Cleanup after partial provisioning failure |
 
-## Common Junior Misreadings
+## Common Misreadings
 
-### "Why not just put all this in the controller?"
+### "The route says clinic, so clinic must own the schema."
 
-Because controllers are hard to reuse, hard to test deeply, and too close to HTTP.
-The tenant onboarding story is not an HTTP concept. It is an application use case.
+The route is V1 product language. The model is tenant-first because practices can
+grow beyond one branch.
 
-### "Why do we need interfaces if we only have one implementation?"
+### "Active tenant means ready tenant."
 
-Interfaces here are not for imaginary future databases. They protect architectural
-direction. Application can express what it needs without depending on Npgsql,
-EF Core, or PostgreSQL.
+Not enough. A tenant can be active but not provisioned or not healthy. Request
+resolution checks all three ideas.
 
-### "Why not throw exceptions for invalid clinic data?"
+### "Shared data is less sensitive than tenant data."
 
-Invalid clinic data is expected user input. Expected outcomes should be represented
-as `Result` values so the caller must handle them.
+Shared registry data decides tenant access. Bad mappings or stale cache here can
+be as dangerous as a bad tenant query.
 
-### "Why do tests use different levels?"
+### "Search path is set once and done."
 
-Because each level catches different bugs:
+No. Pooled connections make that unsafe. Set it when opening tenant-aware
+connections.
 
-- Domain tests catch rule mistakes.
-- Handler tests catch orchestration mistakes.
-- API tests catch HTTP and middleware mistakes.
-- Integration tests catch database reality.
+## Red Flags For Future Work
 
-No single test style covers all of that well.
-
-### "Why is Infrastructure so big?"
-
-Because external systems are detailed. PostgreSQL does not disappear just because
-the architecture diagram is clean. Infrastructure is where those details are
-contained so the rest of the system can stay understandable.
-
-## Red Flags To Watch For In Future Work
-
-When you or AI add new code, be suspicious if you see:
-
-- A tenant-scoped Dapper query using `CreateConnection`.
-- A controller manually mapping business errors to status codes.
-- A domain entity accepting a schema name from user input.
-- `DateTime.UtcNow` inside domain or application code.
-- Direct property mutation for clinic lifecycle state.
-- SQL string interpolation with unquoted identifiers.
-- New tenant routes added without deciding control-plane vs data-plane.
-- Cache invalidation missing after status or health changes.
-- Tests that only prove the happy path.
-
-These are not style nits. They are places where production bugs are born.
-
-## A Staff Engineer's Reading Advice
-
-When you study AI-generated code, do not ask only:
-
-> Is this code correct?
-
-Ask:
-
-> What responsibility is this code claiming?
-
-Then ask:
-
-> Is this the right place for that responsibility?
-
-That is the difference between understanding syntax and understanding architecture.
+- Adding schema/provisioning fields back onto `Clinic`.
+- Treating `clinicId` and `tenantId` as interchangeable.
+- New tenant-scoped Dapper queries using a non-tenant connection.
+- New shared entities without explicit shared-schema mapping.
+- Tenant lifecycle changes without registry cache invalidation.
+- API responses that expose `Status` without clarifying branch status vs tenant status.
+- Tests that create a tenant but forget to mark it provisioned before resolution.
 
 ## Final Study Challenge
 
-After reading the feature, write your own short answer to each prompt:
+Answer these from memory:
 
-1. Why is tenant resolution middleware instead of a helper method in each controller?
-2. Why does Dapper need a tenant-aware connection factory if EF Core already has an interceptor?
-3. Why should `SchemaName` never change after clinic creation?
-4. What would go wrong if inactive tenants were filtered only inside query handlers?
-5. What is the difference between tenant provisioning status and schema health status?
-6. Which tests would fail if search path were not set on every connection?
-7. Where would you add observability for slow tenant provisioning?
-8. Which layer should own a future "rename clinic" feature?
-9. What would be risky about allowing platform operators to choose schema names?
-10. What quickstart steps still need manual validation before release confidence is complete?
-
-If you can answer these without looking at the files, you are no longer just reading
-the project. You are starting to think inside it.
+1. Why does V1 onboarding create both `Tenant` and `Clinic`?
+2. Which aggregate owns `SchemaName`, and why?
+3. What three tenant states must pass before middleware resolves a request?
+4. Why does registration accept `clinicId` but store `TenantId`?
+5. What gets created in `shared`, and what gets created in `tenant_*`?
+6. Which code attempts cleanup after provisioning failure?
+7. Why do EF Core and Dapper each need tenant-aware connection setup?
+8. Which future product feature will most pressure the current endpoint naming?

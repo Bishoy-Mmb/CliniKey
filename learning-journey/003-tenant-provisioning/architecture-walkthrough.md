@@ -1,244 +1,145 @@
 # Architecture Walkthrough: Tenant Provisioning
 
-This document explains feature `003-tenant-provisioning` from the perspective of
-engineering design. It focuses on the "why" behind the code, not just the "what".
+This walkthrough explains the current implementation after correcting the tenancy
+model. The important shift is simple: `Tenant` or practice is the isolation
+boundary; `Clinic` is a branch/location under that boundary.
 
-## 1. The Business Problem
+## 1. Business Problem
 
-CliniKey is moving from a simple application into a multi-tenant SaaS shape. That
-means the system must support multiple clinics while keeping their operational data
-separate.
+CliniKey needs to onboard practices into a multi-tenant SaaS system. V1 onboards
+one clinic location, but the architecture must not trap the product into "one
+clinic equals one tenant" forever.
 
-The platform needs to answer these questions:
+The system must answer:
 
-- How does a new clinic get created?
-- Where does that clinic's operational data live?
-- How does the system know which tenant a request belongs to?
-- How do EF Core and Dapper both query the correct tenant data?
-- How do operators deactivate a clinic without deleting its historical data?
-- How do we migrate all tenant schemas over time?
+- Who owns the database schema?
+- Which state blocks all practice access?
+- Where is the current migration recorded?
+- How does a first branch get created during onboarding?
+- How does a clinic user later resolve to the correct schema?
+- How can platform operators deactivate, reactivate, and migrate tenants safely?
 
-A small tutorial app would often answer these questions with one table and one
-controller method. A production-style app has to answer them in a way that survives
-failure, concurrency, review, and future change.
-
-## 2. The Main Design Choice: Schema-Per-Tenant
-
-This feature uses PostgreSQL schemas for tenant isolation:
+The answer in this implementation is:
 
 ```text
-public
-  ASP.NET Identity and auth tables
-
-shared
-  clinics
-  dentists
-  clinic_dentists
-  tenant_provisioning_audit_logs
-
-tenant_abc123
-  patients
-  appointments
-  treatment_plans
-  invoices
-  payments
+Tenant/Practice owns isolation and schema state.
+Clinic owns branch/location identity and contact state.
 ```
 
-The core idea is simple:
+## 2. Main Design Choices
 
-- Cross-tenant data lives in `shared`.
-- Clinic operational data lives in that clinic's `tenant_*` schema.
-- The request pipeline resolves the tenant and sets PostgreSQL `search_path`.
+| Decision | Why it matters |
+| --- | --- |
+| `Tenant` aggregate owns schema/provisioning/health/migration | Prevents branch records from becoming infrastructure owners |
+| `Clinic` has `TenantId` | Allows V1 first-branch onboarding and future multi-branch practices |
+| Shared registry tables live in `shared` | Platform operations and tenant resolution must work outside a tenant schema |
+| Operational data lives in `tenant_*` | Patient and billing data is isolated by PostgreSQL schema |
+| Tenant registry validates lifecycle before request continuation | Invalid tenants fail before handlers touch data |
+| EF and Dapper both set `search_path` | Connection pooling makes per-open setup mandatory |
 
-The important senior-engineer point is this: schema-per-tenant is not just a data
-modeling choice. It is a runtime behavior choice. Every database connection has to
-be prepared correctly before queries run.
+## 3. Runtime Request Flow
 
-## 3. The Request-Time Flow
-
-For normal tenant-scoped requests, the flow is:
+Normal tenant-scoped requests use the authenticated user's `tenant_id` claim:
 
 ```mermaid
 sequenceDiagram
     participant Client
-    participant API
-    participant Middleware
-    participant Registry
-    participant TenantContext
+    participant Middleware as TenantResolutionMiddleware
+    participant Registry as TenantRegistry
+    participant Shared as shared.tenants
+    participant Context as TenantContext
     participant Handler
-    participant DB
+    participant DB as tenant_* schema
 
-    Client->>API: Authenticated request with tenant_id claim
-    API->>Middleware: Enter pipeline
-    Middleware->>Registry: Resolve tenant_id
-    Registry->>DB: Query shared.clinics
-    Registry-->>Middleware: Tenant schema and health
-    Middleware->>TenantContext: Store schema for this request
-    Middleware->>Handler: Continue
-    Handler->>DB: EF/Dapper opens tenant connection
-    DB-->>Handler: Data from tenant_* schema
+    Client->>Middleware: Request with JWT tenant_id
+    Middleware->>Registry: ResolveAsync(tenantId)
+    Registry->>Shared: Read schema, status, provisioning, health
+    Registry-->>Middleware: Valid registry entry or Result error
+    Middleware->>Context: Resolve tenant id, schema, status, health
+    Middleware->>Handler: Continue request
+    Handler->>DB: EF/Dapper opens tenant-aware connection
+    DB-->>Handler: Operational data from tenant schema
 ```
 
 Key files:
 
 - [TenantResolutionMiddleware.cs](../../src/CliniKey.API/Middleware/TenantResolutionMiddleware.cs)
 - [TenantRegistry.cs](../../src/CliniKey.Infrastructure/Persistence/TenantRegistry.cs)
+- [ITenantRegistry.cs](../../src/CliniKey.Application/Abstractions/Tenancy/ITenantRegistry.cs)
 - [TenantContext.cs](../../src/CliniKey.Infrastructure/Persistence/TenantContext.cs)
 - [TenantConnectionInterceptor.cs](../../src/CliniKey.Infrastructure/Persistence/TenantConnectionInterceptor.cs)
 - [DbConnectionFactory.cs](../../src/CliniKey.Infrastructure/Persistence/DbConnectionFactory.cs)
 
-### Why Middleware?
+`TenantRegistry` rejects tenants that are missing, inactive, not fully
+provisioned, or schema-unhealthy. That is not only validation. It is the front
+door for tenant data access.
 
-Middleware is used because tenant resolution is not a single endpoint behavior.
-It is a request-wide precondition.
+## 4. Onboarding Write Flow
 
-If a request is tenant-scoped, the application should not let it reach handlers
-until the tenant is known, active, and healthy. The middleware is the gate.
-
-### Why A Scoped TenantContext?
-
-`TenantContext` is scoped to the request. It stores:
-
-- tenant ID
-- schema name
-- clinic status
-- schema health status
-
-This lets downstream infrastructure read the current tenant without passing schema
-names through every method signature.
-
-That is a pragmatic production pattern. Passing tenant context explicitly everywhere
-can be pure, but it becomes noisy. A scoped context keeps the boundary clear while
-avoiding repetitive parameters.
-
-### Why Validate Status And Health?
-
-Resolving a tenant is not enough. A tenant can exist but still be unusable:
-
-- inactive clinic
-- suspended clinic
-- unhealthy schema
-- missing registry row
-
-`TenantRegistry.Validate` turns those states into explicit errors. That matters
-because the system should fail before data access happens.
-
-## 4. The Onboarding Flow
-
-Clinic onboarding is the control-plane path that creates a tenant.
+The product call still says "onboard clinic", but internally it creates both the
+practice boundary and its first branch.
 
 ```mermaid
 sequenceDiagram
     participant Operator
-    participant Controller
-    participant Handler
+    participant API as TenantsController
+    participant Handler as OnboardClinicCommandHandler
+    participant Tenant
     participant Clinic
-    participant Repository
-    participant Provisioning
-    participant Migration
-    participant SharedDB
-    participant TenantDB
+    participant Shared as shared schema
+    participant Provisioning as TenantProvisioningService
+    participant Migration as TenantMigrationService
+    participant TenantDb as tenant_* schema
 
-    Operator->>Controller: POST /api/v1/tenants/clinics
-    Controller->>Handler: OnboardClinicCommand
-    Handler->>Repository: Check duplicate phone
-    Handler->>Clinic: Create aggregate
-    Handler->>Clinic: MarkProvisioning
-    Handler->>SharedDB: Save clinic as pending/provisioning
-    Handler->>Provisioning: Provision schema
-    Provisioning->>TenantDB: Create tenant schema
-    Provisioning->>Migration: Apply tenant baseline
-    Migration->>TenantDB: Create operational tables
-    Provisioning->>SharedDB: Write audit logs
-    Handler->>Clinic: MarkProvisioned
-    Handler->>SharedDB: Save final status
-    Controller-->>Operator: 201 Created
+    Operator->>API: POST /api/v1/tenants/clinics
+    API->>Handler: OnboardClinicCommand
+    Handler->>Handler: Validate phone and duplicate branch phone
+    Handler->>Tenant: Tenant.Create(tenantId, name, schemaName)
+    Tenant-->>Handler: TenantCreatedEvent, Pending provisioning
+    Handler->>Clinic: Clinic.Create(clinicId, tenantId, contact)
+    Handler->>Tenant: MarkProvisioning()
+    Handler->>Shared: Save tenant + clinic
+    Handler->>Provisioning: ProvisionAsync(tenant)
+    Provisioning->>TenantDb: CREATE SCHEMA IF NOT EXISTS tenant_*
+    Provisioning->>Migration: ApplyMigrationsAsync(schemaName)
+    Migration->>TenantDb: Create operational baseline + migration history
+    Provisioning->>Shared: Write audit logs
+    Handler->>Tenant: MarkProvisioned(currentMigration)
+    Handler->>Shared: Save final state
+    API-->>Operator: 201 Created with tenant + clinic ids
 ```
 
 Key files:
 
 - [OnboardClinicCommandHandler.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardClinic/OnboardClinicCommandHandler.cs)
+- [OnboardClinicResponse.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardClinic/OnboardClinicResponse.cs)
+- [Tenant.cs](../../src/CliniKey.Domain/Entities/Tenant.cs)
 - [Clinic.cs](../../src/CliniKey.Domain/Entities/Clinic.cs)
 - [TenantProvisioningService.cs](../../src/CliniKey.Infrastructure/Persistence/TenantProvisioningService.cs)
 - [TenantMigrationService.cs](../../src/CliniKey.Infrastructure/Persistence/TenantMigrationService.cs)
-- [ClinicRepository.cs](../../src/CliniKey.Infrastructure/Persistence/Repositories/ClinicRepository.cs)
 
-### Why Does The Handler Orchestrate?
+The handler is intentionally the coordinator. It does not know PostgreSQL details,
+but it does know the application story: validate, create domain objects, persist
+the registry state, provision infrastructure, then finalize the tenant.
 
-The handler is the application use case. It knows the story:
+## 5. Domain Layer
 
-1. Validate phone value.
-2. Check duplicate phone in the clinic registry.
-3. Generate clinic ID and schema name.
-4. Create the `Clinic` aggregate.
-5. Save the clinic in provisioning state.
-6. Ask infrastructure to create and migrate the schema.
-7. Mark the clinic provisioned or roll back the registry row.
+The domain has two different aggregates with different responsibilities.
 
-Notice what the handler does not know:
+### Tenant
 
-- How PostgreSQL creates schemas.
-- How migrations are applied.
-- How audit logs are persisted internally.
+[Tenant.cs](../../src/CliniKey.Domain/Entities/Tenant.cs) owns:
 
-That is Clean Architecture in practice. The handler coordinates policy; the
-Infrastructure layer performs technical details.
-
-### Why Save Before Provisioning?
-
-The system saves the clinic as provisioning before running schema creation. That
-gives the database a registry record for the tenant lifecycle. If provisioning
-fails, the handler removes that clinic record and the provisioning service tries to
-drop the schema.
-
-The important concept is not "perfect distributed transaction". The important
-concept is deliberate compensation:
-
-- If schema migration fails, drop the tenant schema.
-- If provisioning fails, remove the registry row.
-- Record audit logs for operations where possible.
-
-In real systems, perfect atomicity across every side effect is often impossible.
-Senior engineers design recovery and cleanup paths instead of pretending failure
-does not happen.
-
-### Why Deterministic Schema Names?
-
-The handler generates:
-
-```csharp
-tenant_{clinicId:N}
-```
-
-then truncates to a short name. The goal is:
-
-- stable naming
-- PostgreSQL-safe characters
-- no user-controlled schema names
-
-User-controlled schema names are dangerous because schema names become SQL
-identifiers. Even with quoting, letting users choose infrastructure identifiers is
-usually unnecessary risk.
-
-## 5. The Domain Layer
-
-The central domain type is:
-
-- [Clinic.cs](../../src/CliniKey.Domain/Entities/Clinic.cs)
-
-`Clinic` owns business state:
-
-- name
-- phone
-- address
-- immutable schema name
-- active/inactive/suspended status
-- provisioning status
-- schema health status
-- current migration
+- `SchemaName`
+- `TenantStatus`
+- `TenantProvisioningStatus`
+- `TenantSchemaHealthStatus`
+- `CurrentMigration`
+- `LastSchemaVerifiedAtUtc`
 - deactivation metadata
+- tenant lifecycle events
 
-The aggregate exposes methods like:
+Important methods:
 
 - `Create`
 - `MarkProvisioning`
@@ -247,345 +148,148 @@ The aggregate exposes methods like:
 - `Activate`
 - `Deactivate`
 - `Suspend`
-- `UpdateContact`
 - `MarkSchemaHealth`
+- `AddClinic`
 
-### Why Not Set Properties Directly?
+`Tenant.Create` raises [TenantCreatedEvent.cs](../../src/CliniKey.Domain/Events/TenantCreatedEvent.cs).
+Provisioning, activation, and deactivation raise their own events.
 
-In tutorial code you often see:
+### Clinic
 
-```csharp
-clinic.Status = ClinicStatus.Inactive;
-```
+[Clinic.cs](../../src/CliniKey.Domain/Entities/Clinic.cs) owns:
 
-In this project, state transitions go through methods:
+- `TenantId`
+- branch name
+- phone
+- address
+- branch status
+- branch deactivation metadata
+- branch-to-dentist links
 
-```csharp
-clinic.Deactivate(operatorUserId);
-```
-
-That difference matters. A method can enforce rules:
-
-- Do not deactivate an already inactive clinic.
-- Capture timestamp consistently.
-- store the operator ID.
-- Raise a domain event.
-- Mark the aggregate as updated.
-
-Properties store facts. Methods protect transitions.
-
-### Why Result Instead Of Exceptions?
-
-Domain methods return `Result` for expected failures:
-
-- invalid name
-- invalid phone
-- invalid schema name
-- already active
-- already inactive
-- invalid migration
-
-These are not programming bugs. They are expected outcomes of user input or business
-state. Returning `Result` makes the failure part of the method contract.
-
-Exceptions are still appropriate for unexpected technical failures. But a duplicate
-phone number is not exceptional in a SaaS product. It is a user-facing conflict.
-
-### Why TimeProvider?
-
-The aggregate uses `TimeProvider` through the shared `AggregateRoot`. This keeps
-time testable.
-
-Tutorial code often calls:
-
-```csharp
-DateTime.UtcNow
-```
-
-Production-style code injects a clock so tests can say:
-
-```text
-At exactly 2026-05-23T09:00:00Z, deactivate the clinic.
-```
-
-Then assertions are deterministic.
+Clinic no longer owns `SchemaName`, provisioning status, schema health, or current
+migration. That is the heart of the refactor.
 
 ## 6. Application Layer
 
-The application layer contains use cases:
+Application use cases live under [Features/Tenants](../../src/CliniKey.Application/Features/Tenants/).
 
-```text
-src/CliniKey.Application/Features/Tenants/
-  Commands/
-    OnboardClinic/
-    ActivateClinic/
-    DeactivateClinic/
-    UpdateClinicContact/
-    MigrateTenantSchemas/
-  Queries/
-    GetClinicById/
-    ListClinics/
-    GetTenantSchemaHealth/
-```
+| Use case | Current tenant-boundary behavior |
+| --- | --- |
+| Onboard clinic | Creates `Tenant + Clinic`, provisions tenant schema |
+| Activate/deactivate clinic endpoints | Resolve branch, then activate/deactivate the owning tenant for V1 |
+| List/get clinics | Return branch fields plus tenant lifecycle fields |
+| Get tenant schema health | Reads tenant schema state |
+| Migrate tenant schemas | Targets tenant IDs and tenant schema names |
 
-The application layer also owns abstractions:
+Application abstractions keep infrastructure out of handlers:
 
-```text
-src/CliniKey.Application/Abstractions/Tenancy/
-  ITenantContext.cs
-  ITenantRegistry.cs
-  ITenantProvisioningService.cs
-  ITenantMigrationService.cs
-```
-
-This is one of the biggest shifts from tutorial projects.
-
-The Application layer says:
-
-> I need tenant provisioning capability.
-
-It does not say:
-
-> I need Npgsql to execute CREATE SCHEMA.
-
-That distinction is what keeps the use case testable. Application tests can mock
-`ITenantProvisioningService` and focus on orchestration.
+- [ITenantRegistry.cs](../../src/CliniKey.Application/Abstractions/Tenancy/ITenantRegistry.cs)
+- [ITenantProvisioningService.cs](../../src/CliniKey.Application/Abstractions/Tenancy/ITenantProvisioningService.cs)
+- [ITenantMigrationService.cs](../../src/CliniKey.Application/Abstractions/Tenancy/ITenantMigrationService.cs)
+- [ITenantContext.cs](../../src/CliniKey.Application/Abstractions/Tenancy/ITenantContext.cs)
 
 ## 7. Infrastructure Layer
 
-Infrastructure is where PostgreSQL reality lives.
+Infrastructure contains the PostgreSQL-specific work:
 
-Key files:
+- [TenantConfiguration.cs](../../src/CliniKey.Infrastructure/Persistence/Configurations/TenantConfiguration.cs) maps `Tenant` to `shared.tenants`.
+- [ClinicConfiguration.cs](../../src/CliniKey.Infrastructure/Persistence/Configurations/ClinicConfiguration.cs) maps `Clinic` to `shared.clinics`.
+- [SharedDbContext.cs](../../src/CliniKey.Infrastructure/Persistence/SharedDbContext.cs) owns shared registry migrations and seed data.
+- [AppDbContext.cs](../../src/CliniKey.Infrastructure/Persistence/AppDbContext.cs) can read shared entities but excludes shared tables from tenant migrations.
+- [TenantProvisioningService.cs](../../src/CliniKey.Infrastructure/Persistence/TenantProvisioningService.cs) creates schemas, calls migration service, and writes audit logs.
+- [TenantMigrationService.cs](../../src/CliniKey.Infrastructure/Persistence/TenantMigrationService.cs) creates the operational baseline and migration history.
+- [TenantRegistry.cs](../../src/CliniKey.Infrastructure/Persistence/TenantRegistry.cs) caches and validates tenant registry entries.
 
-- `TenantProvisioningService.cs`
-- `TenantMigrationService.cs`
-- `TenantRegistry.cs`
-- `TenantConnectionInterceptor.cs`
-- `DbConnectionFactory.cs`
-- `PostgresIdentifier.cs`
-- `SharedDbContext.cs`
-- `TenancyOptions.cs`
-- EF Core configurations and migrations
+The migrations are split by responsibility:
 
-### Why Infrastructure Is Larger Than Domain
-
-Infrastructure deals with the messy details:
-
-- SQL identifiers must be quoted safely.
-- Schemas must be created if missing.
-- Search path must be set on each opened connection.
-- Connections are pooled and reused.
-- Migration history must exist per tenant schema.
-- Operators need audit logs.
-- Concurrent migration jobs need locking.
-
-This code is less elegant than the domain model because the outside world is less
-elegant than the domain model.
-
-That is normal.
-
-### Why Set search_path Every Time?
-
-PostgreSQL connections are pooled. That means a connection used for Tenant A can
-later be reused for Tenant B.
-
-If the app sets `search_path` once and assumes it stays correct, that assumption can
-leak data.
-
-The feature sets search path in two places:
-
-- EF Core: `TenantConnectionInterceptor`
-- Dapper: `CreateTenantConnection`
-
-This is deliberate duplication at the technology boundary. EF Core and Dapper open
-connections differently, so each needs a safe tenant-aware path.
-
-### Why Both EF Core And Dapper?
-
-The project uses a CQRS style:
-
-- Commands typically use EF Core and domain aggregates.
-- Queries can use Dapper and DTOs.
-
-EF Core is useful when you are changing aggregate state and want change tracking,
-transactions, and domain persistence.
-
-Dapper is useful when you are projecting query results and want explicit SQL.
-
-The key lesson: architectural patterns are not fashion choices. They encode
-tradeoffs.
+- [Shared migration](../../src/CliniKey.Infrastructure/Persistence/Migrations/Shared/20260523090312_AddSharedTenantRegistry.cs) creates `shared.tenants`, `shared.clinics`, shared dentists, clinic dentists, and audit logs.
+- [Tenant migration](../../src/CliniKey.Infrastructure/Persistence/Migrations/Tenant/20260523090321_InitialTenantOperationalSchema.cs) represents operational tenant tables.
 
 ## 8. API Layer
 
-The API layer contains:
+[TenantsController.cs](../../src/CliniKey.API/Controllers/TenantsController.cs)
+contains platform control-plane endpoints:
 
-- `TenantsController`
-- `TenantMigrationsController`
-- `TenantResolutionMiddleware`
-- Program registration and authorization policy setup
-
-Controllers stay thin:
-
-```text
-HTTP request -> MediatR command/query -> Result -> HTTP response
-```
-
-They do not:
-
-- create schemas
-- check duplicate phones
-- manipulate aggregate state directly
-- open database connections
-
-### Why Policy-Based Authorization?
-
-Tenant-management endpoints use:
-
-```csharp
-[Authorize(Policy = Policies.CanManageTenants)]
-```
-
-That expresses intent better than raw role strings. It also gives the project one
-place to evolve authorization rules later.
-
-For example, today `CanManageTenants` may mean "PlatformOperator role". Later it
-might mean "PlatformOperator plus MFA plus internal network". The controller should
-not care.
-
-## 9. Migration Operations
-
-Tenant schemas are not static. When the product evolves, existing tenants need new
-tables, columns, indexes, or constraints.
-
-This feature adds:
-
+- `POST /api/v1/tenants/clinics`
+- `GET /api/v1/tenants/clinics`
+- `GET /api/v1/tenants/clinics/{clinicId}`
+- `PUT /api/v1/tenants/clinics/{clinicId}/contact`
+- `POST /api/v1/tenants/clinics/{clinicId}/deactivate`
+- `POST /api/v1/tenants/clinics/{clinicId}/activate`
 - `POST /api/v1/tenants/migrations/apply`
 - `GET /api/v1/tenants/migrations/status`
 
-The migration command:
+These endpoints are protected by `Policies.CanManageTenants` and skip normal tenant
+resolution because they operate on the control plane.
 
-1. Selects target clinics.
-2. Applies pending migrations.
-3. Marks schema health as healthy or unhealthy.
-4. Invalidates tenant registry cache.
-5. Returns per-tenant results.
+Tenant-scoped product endpoints do not skip resolution. They require the middleware
+to set `TenantContext` before EF or Dapper access.
 
-The senior-engineer lesson is that onboarding is only day one. Operations are day
-two. Real systems need both.
+## 9. Operational Concerns
 
-## 10. Caching And Invalidation
+### Provisioning Is Not A Single Insert
 
-`TenantRegistry` caches tenant registry entries briefly.
+Onboarding touches:
 
-Why cache?
+- shared tenant row
+- shared first clinic row
+- PostgreSQL schema creation
+- operational tenant tables
+- tenant migration history
+- audit logs
+- registry cache behavior later
 
-- Tenant resolution happens on every tenant-scoped request.
-- Looking up `shared.clinics` every time adds avoidable database load.
+That is why provisioning has explicit states and compensation. If migration fails,
+the service attempts to drop the schema and returns `TenantErrors.ProvisioningFailed`.
 
-Why short TTL and explicit invalidation?
+### Cache Invalidation Matters
 
-- Tenant status and schema health affect access.
-- If a clinic is deactivated, users should not keep access for long.
-- Migration and lifecycle commands call invalidation where needed.
+`TenantRegistry` caches tenant entries. Lifecycle and migration operations call
+`InvalidateAsync` so request access does not keep using stale status or health.
 
-Caching is a correctness tradeoff. The cache is not just a performance detail.
-It changes how quickly operational state is observed.
+### Connection State Is Dangerous
 
-## 11. Testing Strategy
+PostgreSQL `search_path` lives on the connection. Connections are pooled. The app
+sets search path on each tenant-aware EF and Dapper connection because assuming old
+connection state is how tenant data leaks happen.
 
-The test suite covers the feature at several levels:
+## 10. Testing Strategy
 
-| Test area | What it proves |
-| --- | --- |
-| Domain tests | Clinic lifecycle rules work without database or HTTP |
-| Application handler tests | Use cases orchestrate dependencies correctly |
-| API tests | Controllers and middleware return expected HTTP behavior |
-| Infrastructure integration tests | PostgreSQL schemas, search paths, migrations, and isolation work |
-| Concurrent isolation tests | Multiple tenants do not bleed into each other under parallel access |
+| Test area | Files | What it proves |
+| --- | --- | --- |
+| Domain | [TenantTests.cs](../../tests/CliniKey.Tests/Domain/TenantTests.cs), [ClinicTests.cs](../../tests/CliniKey.Tests/Domain/ClinicTests.cs) | State transitions, events, timestamps |
+| Application | [OnboardClinicCommandHandlerTests.cs](../../tests/CliniKey.Tests/Application/OnboardClinicCommandHandlerTests.cs), [ClinicLifecycleCommandHandlerTests.cs](../../tests/CliniKey.Tests/Application/ClinicLifecycleCommandHandlerTests.cs), [TenantMigrationCommandHandlerTests.cs](../../tests/CliniKey.Tests/Application/TenantMigrationCommandHandlerTests.cs) | Use-case orchestration |
+| API | [TenantsControllerTests.cs](../../tests/CliniKey.Tests/API/TenantsControllerTests.cs), [TenantResolutionMiddlewareTests.cs](../../tests/CliniKey.Tests/API/TenantResolutionMiddlewareTests.cs) | Thin controllers and middleware gates |
+| Infrastructure | [TenantProvisioningIntegrationTests.cs](../../tests/CliniKey.Tests/Infrastructure/TenantProvisioningIntegrationTests.cs), [TenantLifecycleAccessTests.cs](../../tests/CliniKey.Tests/Infrastructure/TenantLifecycleAccessTests.cs), [TenantSchemaSwitchingTests.cs](../../tests/CliniKey.Tests/Infrastructure/TenantSchemaSwitchingTests.cs), [TenantDapperConnectionTests.cs](../../tests/CliniKey.Tests/Infrastructure/TenantDapperConnectionTests.cs) | PostgreSQL behavior and tenant isolation |
 
-This is a mature testing shape. It avoids the two common extremes:
+## 11. Tradeoffs
 
-- Only unit tests, which miss database behavior.
-- Only end-to-end tests, which are slow and hard to diagnose.
+Schema-per-tenant gives stronger physical isolation, but it makes provisioning,
+migrations, and connection setup more complex.
 
-## 12. The Most Important Tradeoffs
+Having both `Tenant` and `Clinic` adds model vocabulary, but it prevents the first
+branch from pretending to be the whole practice forever.
 
-### Tradeoff: Schema-Per-Tenant vs TenantId Column
+Using a shared control plane adds mapping complexity, but it gives operators a
+safe place to manage tenants without resolving into a tenant schema.
 
-Schema-per-tenant gives stronger physical separation and cleaner operational
-queries, but adds complexity:
+## 12. Senior Review Checklist
 
-- schema creation
-- tenant migrations
-- search path setup
-- more integration testing
+When reviewing future tenancy changes, ask:
 
-TenantId columns are simpler operationally, but every query must remember the
-tenant predicate.
+- Is this code operating on the control plane or the tenant data plane?
+- Does this state belong to `Tenant` or to `Clinic`?
+- Does request access require `TenantStatus.Active`, `ProvisioningStatus.Provisioned`, and `SchemaHealthStatus.Healthy`?
+- Does any Dapper tenant query use the tenant-aware connection factory?
+- Does any EF tenant operation happen without a resolved `TenantContext`?
+- Are shared tables explicitly mapped to the shared schema?
+- Does a lifecycle or health change invalidate the tenant registry cache?
+- Does a new response field clearly distinguish tenant lifecycle from branch lifecycle?
 
-This feature chose stronger isolation and accepted more infrastructure complexity.
+## 13. What To Watch Next
 
-### Tradeoff: SharedDbContext Plus AppDbContext
-
-The feature uses a focused `SharedDbContext` for shared registry data while
-`AppDbContext` handles operational data with tenant search-path behavior.
-
-That separation helps avoid accidentally treating registry data like tenant-local
-data.
-
-The cost is more EF configuration and migrations to understand.
-
-### Tradeoff: Manual Tenant Migration SQL
-
-`TenantMigrationService` applies a baseline through explicit SQL. EF migrations are
-also generated under tenant migration folders.
-
-This gives direct control over schema-qualified creation, but it is an area to keep
-watching as the product grows. Over time, the team may want more automation around
-per-tenant EF migration execution.
-
-### Tradeoff: Middleware Skips Tenant Management Routes
-
-Tenant-management routes are control-plane routes. They manage tenants and are
-protected by platform-operator authorization, so they skip normal tenant resolution.
-
-That is correct for this feature. But it means every new route must be classified:
-
-- Is this control-plane?
-- Or is this tenant-scoped data-plane?
-
-Misclassifying a route is a real security risk.
-
-## 13. A Senior Review Checklist
-
-When reviewing future tenant-related code, ask:
-
-- Does this route require tenant resolution?
-- Does this query use tenant-scoped or shared data?
-- If it is tenant-scoped Dapper, does it use `CreateTenantConnection`?
-- If it is EF Core tenant data, does it run after `TenantContext` is resolved?
-- If a clinic is inactive, can the request still reach data access?
-- Are expected failures represented as `Result` errors?
-- Is the schema name generated by the system rather than accepted from the user?
-- Are PostgreSQL identifiers quoted through the helper?
-- Is cache invalidation needed after this state change?
-- Does the test prove the boundary that could leak tenant data?
-
-That checklist is more valuable than memorizing the current implementation.
-
-## 14. What To Watch Next
-
-This feature is strong, but real systems keep evolving. Future hardening areas may
-include:
-
-- Running the full quickstart flow manually.
-- Auditing every new Dapper query for tenant-aware connection usage.
-- Deciding whether tenant migration execution should rely more directly on EF Core
-  migration APIs over time.
-- Adding observability around tenant resolution failures and migration duration.
-- Reviewing cache duration in production load tests.
-- Expanding authorization around platform operations.
-- Documenting operational runbooks for failed tenant provisioning.
-
-The mark of a real project is not that every answer is final. It is that the system
-has clear places where future answers belong.
+- Add first-class branch management when V1 grows beyond one clinic.
+- Revisit endpoint names so tenant lifecycle operations are not forever named only after clinics.
+- Run the manual quickstart in [quickstart.md](../../specs/003-tenant-provisioning/quickstart.md).
+- Continue hardening integration tests around Docker/Testcontainers availability.
+- Add observability for provisioning duration, migration duration, and tenant resolution failures.
