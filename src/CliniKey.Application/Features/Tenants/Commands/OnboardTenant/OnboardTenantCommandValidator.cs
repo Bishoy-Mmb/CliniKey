@@ -1,11 +1,11 @@
 using CliniKey.Domain.Entities;
 using FluentValidation;
 
-namespace CliniKey.Application.Features.Tenants.Commands.OnboardClinic;
+namespace CliniKey.Application.Features.Tenants.Commands.OnboardTenant;
 
-public sealed class OnboardClinicCommandValidator : AbstractValidator<OnboardClinicCommand>
+public sealed class OnboardTenantCommandValidator : AbstractValidator<OnboardTenantCommand>
 {
-    public OnboardClinicCommandValidator()
+    public OnboardTenantCommandValidator()
     {
         RuleFor(x => x.Name)
             .NotEmpty().WithMessage("Clinic name is required.")

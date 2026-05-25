@@ -44,11 +44,11 @@ practice has two branches.
 
 Read:
 
-- [OnboardClinicCommand.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardClinic/OnboardClinicCommand.cs)
-- [OnboardClinicCommandValidator.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardClinic/OnboardClinicCommandValidator.cs)
-- [OnboardClinicCommandHandler.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardClinic/OnboardClinicCommandHandler.cs)
-- [OnboardClinicResponse.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardClinic/OnboardClinicResponse.cs)
-- [OnboardClinicCommandHandlerTests.cs](../../tests/CliniKey.Tests/Application/OnboardClinicCommandHandlerTests.cs)
+- [OnboardTenantCommand.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardTenant/OnboardTenantCommand.cs)
+- [OnboardTenantCommandValidator.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardTenant/OnboardTenantCommandValidator.cs)
+- [OnboardTenantCommandHandler.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardTenant/OnboardTenantCommandHandler.cs)
+- [OnboardTenantResponse.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardTenant/OnboardTenantResponse.cs)
+- [OnboardTenantCommandHandlerTests.cs](../../tests/CliniKey.Tests/Application/OnboardTenantCommandHandlerTests.cs)
 
 Trace this sequence:
 
@@ -182,14 +182,14 @@ after the tenant/practice refactor.
 
 Read:
 
-- [ActivateClinicCommandHandler.cs](../../src/CliniKey.Application/Features/Tenants/Commands/ActivateClinic/ActivateClinicCommandHandler.cs)
-- [DeactivateClinicCommandHandler.cs](../../src/CliniKey.Application/Features/Tenants/Commands/DeactivateClinic/DeactivateClinicCommandHandler.cs)
+- [ActivateTenantCommandHandler.cs](../../src/CliniKey.Application/Features/Tenants/Commands/ActivateTenant/ActivateTenantCommandHandler.cs)
+- [DeactivateTenantCommandHandler.cs](../../src/CliniKey.Application/Features/Tenants/Commands/DeactivateTenant/DeactivateTenantCommandHandler.cs)
 - [MigrateTenantSchemasCommandHandler.cs](../../src/CliniKey.Application/Features/Tenants/Commands/MigrateTenantSchemas/MigrateTenantSchemasCommandHandler.cs)
 - [GetTenantSchemaHealthQueryHandler.cs](../../src/CliniKey.Application/Features/Tenants/Queries/GetTenantSchemaHealth/GetTenantSchemaHealthQueryHandler.cs)
 - [ClinicLifecycleCommandHandlerTests.cs](../../tests/CliniKey.Tests/Application/ClinicLifecycleCommandHandlerTests.cs)
 - [TenantMigrationCommandHandlerTests.cs](../../tests/CliniKey.Tests/Application/TenantMigrationCommandHandlerTests.cs)
 
-Notice that the lifecycle endpoint still receives `clinicId` for API continuity,
+Notice that the lifecycle endpoint still receives `tenantId` for API continuity,
 then acts on the owning tenant. That is a V1 compatibility choice. Future
 multi-branch work should revisit naming and semantics.
 

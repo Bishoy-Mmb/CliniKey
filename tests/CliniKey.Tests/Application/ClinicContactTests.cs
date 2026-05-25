@@ -1,6 +1,6 @@
 using CliniKey.Application.Features.Tenants.Commands.UpdateClinicContact;
-using CliniKey.Application.Features.Tenants.Queries.GetClinicById;
-using CliniKey.Application.Features.Tenants.Queries.ListClinics;
+using CliniKey.Application.Features.Tenants.Queries.GetTenantById;
+using CliniKey.Application.Features.Tenants.Queries.ListTenants;
 using CliniKey.Domain.Entities;
 using CliniKey.Domain.Enums;
 using CliniKey.Domain.Errors;
@@ -29,15 +29,14 @@ public class ClinicContactTests
     }
 
     [Fact]
-    public async Task GetClinicById_ExistingClinic_ReturnsDetails()
+    public async Task GetTenantById_ExistingClinic_ReturnsDetails()
     {
         var clinic = CreateClinic("Cairo Dental Center", "01112345678");
-        var tenant = CreateTenant(clinic.TenantId);
-        _clinicRepository.GetByIdAsync(clinic.Id, Arg.Any<CancellationToken>()).Returns(clinic);
+        var tenant = CreateTenant(clinic.TenantId, [clinic]);
         _tenantRepository.GetByIdAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
-        var handler = new GetClinicByIdQueryHandler(_clinicRepository, _tenantRepository);
+        var handler = new GetTenantByIdQueryHandler(_tenantRepository);
 
-        var result = await handler.Handle(new GetClinicByIdQuery(clinic.Id), CancellationToken.None);
+        var result = await handler.Handle(new GetTenantByIdQuery(tenant.Id), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.ClinicId.Should().Be(clinic.Id);
@@ -46,7 +45,7 @@ public class ClinicContactTests
     }
 
     [Fact]
-    public async Task ListClinics_ReturnsPagedClinicsAndTotalCount()
+    public async Task ListTenants_ReturnsPagedClinicsAndTotalCount()
     {
         var clinic = CreateClinic("Cairo Dental Center", "01112345678");
         var tenant = CreateTenant(clinic.TenantId, [clinic]);
@@ -56,10 +55,10 @@ public class ClinicContactTests
         _tenantRepository
             .CountAsync(TenantStatus.Active, TenantSchemaHealthStatus.Healthy, true, Arg.Any<CancellationToken>())
             .Returns(1);
-        var handler = new ListClinicsQueryHandler(_tenantRepository);
+        var handler = new ListTenantsQueryHandler(_tenantRepository);
 
         var result = await handler.Handle(
-            new ListClinicsQuery(TenantStatus.Active, TenantSchemaHealthStatus.Healthy),
+            new ListTenantsQuery(TenantStatus.Active, TenantSchemaHealthStatus.Healthy),
             CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -78,7 +77,7 @@ public class ClinicContactTests
         var handler = new UpdateClinicContactCommandHandler(_clinicRepository, _unitOfWork);
 
         var result = await handler.Handle(
-            new UpdateClinicContactCommand(clinic.Id, "01198765432", "22 Nile Corniche"),
+            new UpdateClinicContactCommand(clinic.TenantId, clinic.Id, "01198765432", "22 Nile Corniche"),
             CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -98,7 +97,7 @@ public class ClinicContactTests
         var handler = new UpdateClinicContactCommandHandler(_clinicRepository, _unitOfWork);
 
         var result = await handler.Handle(
-            new UpdateClinicContactCommand(clinic.Id, "01198765432", "22 Nile Corniche"),
+            new UpdateClinicContactCommand(clinic.TenantId, clinic.Id, "01198765432", "22 Nile Corniche"),
             CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();

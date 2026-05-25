@@ -3,18 +3,18 @@ using CliniKey.Application.Features.Tenants.Queries;
 using CliniKey.Domain.Repositories;
 using CliniKey.SharedKernel.Primitives;
 
-namespace CliniKey.Application.Features.Tenants.Queries.ListClinics;
+namespace CliniKey.Application.Features.Tenants.Queries.ListTenants;
 
-internal sealed class ListClinicsQueryHandler : IQueryHandler<ListClinicsQuery, ClinicListResponse>
+internal sealed class ListTenantsQueryHandler : IQueryHandler<ListTenantsQuery, TenantListResponse>
 {
     private readonly ITenantRepository _tenantRepository;
 
-    public ListClinicsQueryHandler(ITenantRepository tenantRepository)
+    public ListTenantsQueryHandler(ITenantRepository tenantRepository)
     {
         _tenantRepository = tenantRepository;
     }
 
-    public async Task<Result<ClinicListResponse>> Handle(ListClinicsQuery request, CancellationToken cancellationToken)
+    public async Task<Result<TenantListResponse>> Handle(ListTenantsQuery request, CancellationToken cancellationToken)
     {
         var page = Math.Max(request.Page, 1);
         var pageSize = Math.Clamp(request.PageSize, 1, 100);
@@ -31,9 +31,9 @@ internal sealed class ListClinicsQueryHandler : IQueryHandler<ListClinicsQuery, 
             requireClinic: true,
             cancellationToken: cancellationToken);
 
-        return new ClinicListResponse(
+        return new TenantListResponse(
             tenants
-                .Select(ClinicListItemResponse.FromTenant)
+                .Select(TenantListItemResponse.FromTenant)
                 .ToList()
                 .AsReadOnly(),
             page,

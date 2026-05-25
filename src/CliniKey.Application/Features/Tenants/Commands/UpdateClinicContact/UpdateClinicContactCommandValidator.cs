@@ -7,6 +7,9 @@ public sealed class UpdateClinicContactCommandValidator : AbstractValidator<Upda
 {
     public UpdateClinicContactCommandValidator()
     {
+        RuleFor(x => x.TenantId)
+            .NotEmpty().WithMessage("Tenant ID is required.");
+
         RuleFor(x => x.ClinicId)
             .NotEmpty().WithMessage("Clinic ID is required.");
 

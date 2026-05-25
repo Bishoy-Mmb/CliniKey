@@ -2,8 +2,8 @@ using CliniKey.API.Controllers;
 using CliniKey.Application.Features.Tenants.Commands.MigrateTenantSchemas;
 using CliniKey.Application.Features.Tenants.Commands.UpdateClinicContact;
 using CliniKey.Application.Features.Tenants.Queries;
-using CliniKey.Application.Features.Tenants.Queries.GetClinicById;
-using CliniKey.Application.Features.Tenants.Queries.ListClinics;
+using CliniKey.Application.Features.Tenants.Queries.GetTenantById;
+using CliniKey.Application.Features.Tenants.Queries.ListTenants;
 using CliniKey.SharedKernel.Primitives;
 using FluentAssertions;
 using MediatR;
@@ -25,31 +25,32 @@ public class TenantsControllerTests
     }
 
     [Fact]
-    public async Task GetClinicById_ReturnsOkWithClinicDetails()
+    public async Task GetTenantById_ReturnsOkWithClinicDetails()
     {
+        var tenantId = Guid.NewGuid();
         var clinicId = Guid.NewGuid();
-        var response = CreateClinicResponse(clinicId);
-        _sender.Send(Arg.Any<GetClinicByIdQuery>(), Arg.Any<CancellationToken>())
+        var response = CreateTenantResponse(tenantId, clinicId);
+        _sender.Send(Arg.Any<GetTenantByIdQuery>(), Arg.Any<CancellationToken>())
             .Returns(Result.Success(response));
 
-        var result = await _controller.GetClinicById(clinicId, CancellationToken.None);
+        var result = await _controller.GetTenantById(tenantId, CancellationToken.None);
 
         var ok = result.Should().BeOfType<OkObjectResult>().Subject;
         ok.Value.Should().Be(response);
     }
 
     [Fact]
-    public async Task ListClinics_ReturnsOkWithPagedClinics()
+    public async Task ListTenants_ReturnsOkWithPagedClinics()
     {
-        var response = new ClinicListResponse(
-            [new ClinicListItemResponse(Guid.NewGuid(), Guid.NewGuid(), "Cairo Dental Center", "01112345678", "15 Tahrir St", "tenant_ab12cd34", "Active", "Active", "Provisioned", "Healthy", null)],
+        var response = new TenantListResponse(
+            [new TenantListItemResponse(Guid.NewGuid(), Guid.NewGuid(), "Cairo Dental Center", "01112345678", "15 Tahrir St", "tenant_ab12cd34", "Active", "Active", "Provisioned", "Healthy", null)],
             1,
             50,
             1);
-        _sender.Send(Arg.Any<ListClinicsQuery>(), Arg.Any<CancellationToken>())
+        _sender.Send(Arg.Any<ListTenantsQuery>(), Arg.Any<CancellationToken>())
             .Returns(Result.Success(response));
 
-        var result = await _controller.ListClinics(null, null, 1, 50, CancellationToken.None);
+        var result = await _controller.ListTenants(null, null, 1, 50, CancellationToken.None);
 
         var ok = result.Should().BeOfType<OkObjectResult>().Subject;
         ok.Value.Should().Be(response);
@@ -58,6 +59,7 @@ public class TenantsControllerTests
     [Fact]
     public async Task UpdateClinicContact_Success_ReturnsNoContentAndSendsRouteId()
     {
+        var tenantId = Guid.NewGuid();
         var clinicId = Guid.NewGuid();
         UpdateClinicContactCommand? sentCommand = null;
         _sender
@@ -65,21 +67,23 @@ public class TenantsControllerTests
             .Returns(Result.Success());
 
         var result = await _controller.UpdateClinicContact(
+            tenantId,
             clinicId,
             new TenantsController.UpdateClinicContactRequest("01198765432", "22 Nile Corniche"),
             CancellationToken.None);
 
         result.Should().BeOfType<NoContentResult>();
         sentCommand.Should().NotBeNull();
+        sentCommand!.TenantId.Should().Be(tenantId);
         sentCommand!.ClinicId.Should().Be(clinicId);
         sentCommand.Phone.Should().Be("01198765432");
         sentCommand.Address.Should().Be("22 Nile Corniche");
     }
 
-    private static ClinicResponse CreateClinicResponse(Guid clinicId)
+    private static TenantResponse CreateTenantResponse(Guid tenantId, Guid clinicId)
     {
-        return new ClinicResponse(
-            Guid.NewGuid(),
+        return new TenantResponse(
+            tenantId,
             clinicId,
             "Cairo Dental Center",
             "01112345678",

@@ -1,13 +1,13 @@
 using CliniKey.API.Extensions;
 using CliniKey.Application.Constants;
-using CliniKey.Application.Features.Tenants.Commands.ActivateClinic;
-using CliniKey.Application.Features.Tenants.Commands.DeactivateClinic;
+using CliniKey.Application.Features.Tenants.Commands.ActivateTenant;
+using CliniKey.Application.Features.Tenants.Commands.DeactivateTenant;
 using CliniKey.Application.Features.Tenants.Commands.MigrateTenantSchemas;
-using CliniKey.Application.Features.Tenants.Commands.OnboardClinic;
+using CliniKey.Application.Features.Tenants.Commands.OnboardTenant;
 using CliniKey.Application.Features.Tenants.Commands.UpdateClinicContact;
-using CliniKey.Application.Features.Tenants.Queries.GetClinicById;
+using CliniKey.Application.Features.Tenants.Queries.GetTenantById;
 using CliniKey.Application.Features.Tenants.Queries.GetTenantSchemaHealth;
-using CliniKey.Application.Features.Tenants.Queries.ListClinics;
+using CliniKey.Application.Features.Tenants.Queries.ListTenants;
 using CliniKey.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -16,7 +16,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace CliniKey.API.Controllers;
 
 [ApiController]
-[Route("api/v1/tenants/clinics")]
+[Route("api/v1/tenants")]
 [Authorize(Policy = Policies.CanManageTenants)]
 public sealed class TenantsController : ControllerBase
 {
@@ -28,8 +28,8 @@ public sealed class TenantsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> OnboardClinic(
-        [FromBody] OnboardClinicCommand command,
+    public async Task<IActionResult> OnboardTenant(
+        [FromBody] OnboardTenantCommand command,
         CancellationToken cancellationToken)
     {
         var result = await _sender.Send(command, cancellationToken);
@@ -39,13 +39,13 @@ public sealed class TenantsController : ControllerBase
         }
 
         return CreatedAtAction(
-            nameof(GetClinicById),
-            new { clinicId = result.Value.ClinicId },
+            nameof(GetTenantById),
+            new { tenantId = result.Value.TenantId },
             result.Value);
     }
 
     [HttpGet]
-    public async Task<IActionResult> ListClinics(
+    public async Task<IActionResult> ListTenants(
         [FromQuery] TenantStatus? status,
         [FromQuery] TenantSchemaHealthStatus? health,
         [FromQuery] int page = 1,
@@ -53,59 +53,60 @@ public sealed class TenantsController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         var result = await _sender.Send(
-            new ListClinicsQuery(status, health, page, pageSize),
+            new ListTenantsQuery(status, health, page, pageSize),
             cancellationToken);
 
         return result.ToActionResult();
     }
 
-    [HttpGet("{clinicId:guid}")]
-    public async Task<IActionResult> GetClinicById(
-        Guid clinicId,
+    [HttpGet("{tenantId:guid}")]
+    public async Task<IActionResult> GetTenantById(
+        Guid tenantId,
         CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new GetClinicByIdQuery(clinicId), cancellationToken);
+        var result = await _sender.Send(new GetTenantByIdQuery(tenantId), cancellationToken);
 
         return result.ToActionResult();
     }
 
-    [HttpPut("{clinicId:guid}/contact")]
+    [HttpPut("{tenantId:guid}/clinics/{clinicId:guid}/contact")]
     public async Task<IActionResult> UpdateClinicContact(
+        Guid tenantId,
         Guid clinicId,
         [FromBody] UpdateClinicContactRequest request,
         CancellationToken cancellationToken)
     {
         var result = await _sender.Send(
-            new UpdateClinicContactCommand(clinicId, request.Phone, request.Address),
+            new UpdateClinicContactCommand(tenantId, clinicId, request.Phone, request.Address),
             cancellationToken);
 
         return result.IsSuccess ? NoContent() : result.ToActionResult();
     }
 
-    [HttpPost("{clinicId:guid}/deactivate")]
-    public async Task<IActionResult> DeactivateClinic(
-        Guid clinicId,
-        [FromBody] DeactivateClinicRequest request,
+    [HttpPost("{tenantId:guid}/deactivate")]
+    public async Task<IActionResult> DeactivateTenant(
+        Guid tenantId,
+        [FromBody] DeactivateTenantRequest request,
         CancellationToken cancellationToken)
     {
         var result = await _sender.Send(
-            new DeactivateClinicCommand(clinicId, request.Reason),
+            new DeactivateTenantCommand(tenantId, request.Reason),
             cancellationToken);
 
         return result.IsSuccess ? NoContent() : result.ToActionResult();
     }
 
-    [HttpPost("{clinicId:guid}/activate")]
-    public async Task<IActionResult> ActivateClinic(
-        Guid clinicId,
+    [HttpPost("{tenantId:guid}/activate")]
+    public async Task<IActionResult> ActivateTenant(
+        Guid tenantId,
         CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new ActivateClinicCommand(clinicId), cancellationToken);
+        var result = await _sender.Send(new ActivateTenantCommand(tenantId), cancellationToken);
 
         return result.IsSuccess ? NoContent() : result.ToActionResult();
     }
 
-    public sealed record DeactivateClinicRequest(string? Reason);
+    public sealed record DeactivateTenantRequest(string? Reason);
     public sealed record UpdateClinicContactRequest(string Phone, string Address);
 }
 

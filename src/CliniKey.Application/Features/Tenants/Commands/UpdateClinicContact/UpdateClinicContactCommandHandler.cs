@@ -26,6 +26,11 @@ internal sealed class UpdateClinicContactCommandHandler : ICommandHandler<Update
             return Result.Failure(ClinicErrors.NotFound);
         }
 
+        if (clinic.TenantId != request.TenantId)
+        {
+            return Result.Failure(TenantErrors.ClinicTenantMismatch);
+        }
+
         var phoneResult = PhoneNumber.Create(request.Phone);
         if (phoneResult.IsFailure)
         {

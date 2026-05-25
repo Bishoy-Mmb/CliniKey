@@ -8,7 +8,7 @@
 
 ## R1: Shared Schema Layout
 
-**Decision**: Use an explicit PostgreSQL `shared` schema for cross-tenant domain data: `clinics`, `dentists`, `clinic_dentists`, tenant schema metadata, and provisioning audit logs. Keep ASP.NET Identity and refresh-token tables in `public`. Keep operational data in tenant schemas named `tenant_*`.
+**Decision**: Use an explicit PostgreSQL `shared` schema for cross-tenant domain data: `tenants`, `clinics`, `dentists`, `clinic_dentists`, tenant schema metadata, and provisioning audit logs. Keep ASP.NET Identity and refresh-token tables in `public`. Keep operational data in tenant schemas named `tenant_*`.
 
 **Rationale**: `public` already hosts Identity/auth data from Phase 002. Cross-tenant domain data needs a stable location independent of whichever tenant schema is active. An explicit `shared` schema makes this boundary visible in migrations, EF mappings, and Dapper SQL.
 
@@ -20,9 +20,9 @@
 
 ## R2: Schema Name Generation
 
-**Decision**: Generate schema names deterministically from the clinic ID using `tenant_` plus a lowercase, hyphen-free short ID segment, constrained to valid PostgreSQL identifier characters.
+**Decision**: Generate schema names deterministically from the tenant/practice ID using `tenant_` plus a lowercase, hyphen-free short ID segment, constrained to valid PostgreSQL identifier characters.
 
-**Rationale**: Clinic names are not unique and can contain spaces, punctuation, Arabic text, or characters that are awkward in PostgreSQL identifiers. ID-derived names are stable, unique, and safe. The `Clinic.SchemaName` property remains immutable after creation.
+**Rationale**: Practice and clinic names are not unique and can contain spaces, punctuation, Arabic text, or characters that are awkward in PostgreSQL identifiers. Tenant ID-derived names are stable, unique, and safe. The `Tenant.SchemaName` property remains immutable after creation.
 
 **Alternatives considered**:
 - **Slug from clinic name**: User-friendly but collision-prone and rename-sensitive.
@@ -68,7 +68,7 @@
 
 ## R6: Tenant Resolution and Status Checks
 
-**Decision**: Tenant resolution reads `tenant_id` from validated JWT claims, fetches the clinic registry row from `shared.clinics`, verifies the clinic is active and the schema is healthy, then stores the resolved context in `HttpContext.Items`/`ITenantContext`. Missing or invalid tenant claims return 401. Known but inactive tenants return 403. Missing/unhealthy schemas return an explicit tenant provisioning error.
+**Decision**: Tenant resolution reads `tenant_id` from validated JWT claims, fetches the tenant registry row from `shared.tenants`, verifies the tenant is active and the schema is healthy, then stores the resolved context in `HttpContext.Items`/`ITenantContext`. Missing or invalid tenant claims return 401. Known but inactive tenants return 403. Missing/unhealthy schemas return an explicit tenant provisioning error.
 
 **Rationale**: JWT proves tenant membership, but the registry is the source of truth for current lifecycle state and schema health. This prevents deactivated or broken tenants from reaching handlers.
 
@@ -80,7 +80,7 @@
 
 ## R7: Tenant Registry Caching
 
-**Decision**: Cache tenant registry lookups by clinic ID for a short TTL, with cache invalidation on activation, deactivation, contact update, and migration health changes.
+**Decision**: Cache tenant registry lookups by tenant ID for a short TTL, with cache invalidation on activation, deactivation, contact update, and migration health changes.
 
 **Rationale**: Tenant resolution happens on every request, but status changes are relatively rare. Short-lived cache keeps request overhead low while still respecting lifecycle changes quickly.
 
@@ -99,4 +99,3 @@
 **Alternatives considered**:
 - **Reuse `ClinicAdmin`**: Incorrect privilege boundary.
 - **Leave endpoints anonymous for internal tools**: Unacceptable for production and hard to test securely.
-

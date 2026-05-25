@@ -55,26 +55,26 @@
 
 ## Phase 3: User Story 1 - Onboard a New Clinic (Priority: P1) MVP
 
-**Goal**: A platform operator creates a clinic, provisions a tenant schema, applies operational migrations, and receives the clinic ID.
+**Goal**: A platform operator creates a tenant/practice plus first clinic branch, provisions a tenant schema, applies operational migrations, and receives both IDs.
 
-**Independent Test**: Call `POST /api/v1/tenants/clinics`, verify `shared.clinics` has the clinic and the new tenant schema contains operational tables.
+**Independent Test**: Call `POST /api/v1/tenants`, verify `shared.tenants` has the tenant, `shared.clinics` has the first clinic branch, and the new tenant schema contains operational tables.
 
 ### Tests for User Story 1
 
 - [X] T021 [P] [US1] Add clinic creation/contact validation tests in `tests/CliniKey.Tests/Domain/ClinicTests.cs`
-- [X] T022 [P] [US1] Add onboarding handler tests for success, duplicate phone, and provisioning failure rollback in `tests/CliniKey.Tests/Application/OnboardClinicCommandHandlerTests.cs`
+- [X] T022 [P] [US1] Add onboarding handler tests for success, duplicate phone, and provisioning failure rollback in `tests/CliniKey.Tests/Application/OnboardTenantCommandHandlerTests.cs`
 - [X] T023 [P] [US1] Add provisioning integration tests for schema creation, migration application, and no orphan state in `tests/CliniKey.Tests/Infrastructure/TenantProvisioningIntegrationTests.cs`
 
 ### Implementation for User Story 1
 
-- [X] T024 [US1] Create `OnboardClinicCommand`, response DTO, and validator in `src/CliniKey.Application/Features/Tenants/Commands/OnboardClinic/`
-- [X] T025 [US1] Implement deterministic schema name generation in `src/CliniKey.Application/Features/Tenants/Commands/OnboardClinic/OnboardClinicCommandHandler.cs`
+- [X] T024 [US1] Create `OnboardTenantCommand`, response DTO, and validator in `src/CliniKey.Application/Features/Tenants/Commands/OnboardTenant/`
+- [X] T025 [US1] Implement deterministic schema name generation in `src/CliniKey.Application/Features/Tenants/Commands/OnboardTenant/OnboardTenantCommandHandler.cs`
 - [X] T026 [US1] Implement `TenantProvisioningService` with transactional schema creation, advisory lock, migration execution, audit logging, and rollback compensation in `src/CliniKey.Infrastructure/Persistence/TenantProvisioningService.cs`
 - [X] T027 [US1] Implement tenant operational migration application for a new schema in `src/CliniKey.Infrastructure/Persistence/TenantMigrationService.cs`
 - [X] T028 [US1] Implement expanded `ClinicRepository` methods in `src/CliniKey.Infrastructure/Persistence/Repositories/ClinicRepository.cs`
-- [X] T029 [US1] Implement `OnboardClinicCommandHandler` orchestration in `src/CliniKey.Application/Features/Tenants/Commands/OnboardClinic/OnboardClinicCommandHandler.cs`
-- [X] T030 [US1] Create `TenantsController` with `POST /api/v1/tenants/clinics` in `src/CliniKey.API/Controllers/TenantsController.cs`
-- [X] T031 [US1] Add shared-schema migration for clinic registry/contact/status/audit data in `src/CliniKey.Infrastructure/Persistence/Migrations/Shared/`
+- [X] T029 [US1] Implement `OnboardTenantCommandHandler` orchestration in `src/CliniKey.Application/Features/Tenants/Commands/OnboardTenant/OnboardTenantCommandHandler.cs`
+- [X] T030 [US1] Create `TenantsController` with `POST /api/v1/tenants` in `src/CliniKey.API/Controllers/TenantsController.cs`
+- [X] T031 [US1] Add shared-schema migration for tenant registry, clinic contact/status, and audit data in `src/CliniKey.Infrastructure/Persistence/Migrations/Shared/`
 - [X] T032 [US1] Add tenant operational migration baseline in `src/CliniKey.Infrastructure/Persistence/Migrations/Tenant/`
 
 **Checkpoint**: Clinic onboarding is functional and independently testable.
@@ -124,7 +124,7 @@
 
 - [X] T047 [US3] Move clinic, dentist, and clinic-dentist repository queries to shared schema mappings in `src/CliniKey.Infrastructure/Persistence/Repositories/ClinicRepository.cs`, `DentistRepository.cs`, and `AuthService.cs`
 - [X] T048 [US3] Update staff invite flow to create dentist and clinic-dentist rows in `shared` in `src/CliniKey.Infrastructure/Identity/AuthService.cs`
-- [X] T049 [US3] Add shared-schema Dapper query support for clinic registry reads in `src/CliniKey.Infrastructure/Persistence/TenantRegistry.cs`
+- [X] T049 [US3] Add shared-schema Dapper query support for tenant registry reads in `src/CliniKey.Infrastructure/Persistence/TenantRegistry.cs`
 
 **Checkpoint**: Cross-tenant data remains available and unambiguous under any tenant search path.
 
@@ -144,10 +144,10 @@
 
 ### Implementation for User Story 4
 
-- [X] T053 [US4] Create `DeactivateClinicCommand`, validator, and handler in `src/CliniKey.Application/Features/Tenants/Commands/DeactivateClinic/`
-- [X] T054 [US4] Create `ActivateClinicCommand`, validator, and handler in `src/CliniKey.Application/Features/Tenants/Commands/ActivateClinic/`
+- [X] T053 [US4] Create `DeactivateTenantCommand`, validator, and handler in `src/CliniKey.Application/Features/Tenants/Commands/DeactivateTenant/`
+- [X] T054 [US4] Create `ActivateTenantCommand`, validator, and handler in `src/CliniKey.Application/Features/Tenants/Commands/ActivateTenant/`
 - [X] T055 [US4] Add audit logging for activation and deactivation in `src/CliniKey.Infrastructure/Persistence/TenantProvisioningService.cs`
-- [X] T056 [US4] Add `POST /api/v1/tenants/clinics/{clinicId}/deactivate` and `/activate` endpoints to `src/CliniKey.API/Controllers/TenantsController.cs`
+- [X] T056 [US4] Add `POST /api/v1/tenants/{tenantId}/deactivate` and `/activate` endpoints to `src/CliniKey.API/Controllers/TenantsController.cs`
 - [X] T057 [US4] Ensure tenant resolution returns 403 for inactive or suspended clinics in `src/CliniKey.API/Middleware/TenantResolutionMiddleware.cs`
 
 **Checkpoint**: Tenant lifecycle blocking and restoration work without data loss.
@@ -168,11 +168,11 @@
 
 ### Implementation for User Story 5
 
-- [X] T061 [US5] Create clinic response DTOs in `src/CliniKey.Application/Features/Tenants/Queries/ClinicResponses.cs`
-- [X] T062 [US5] Create `GetClinicByIdQuery` and handler in `src/CliniKey.Application/Features/Tenants/Queries/GetClinicById/`
-- [X] T063 [US5] Create `ListClinicsQuery` and handler in `src/CliniKey.Application/Features/Tenants/Queries/ListClinics/`
+- [X] T061 [US5] Create clinic response DTOs in `src/CliniKey.Application/Features/Tenants/Queries/TenantResponses.cs`
+- [X] T062 [US5] Create `GetTenantByIdQuery` and handler in `src/CliniKey.Application/Features/Tenants/Queries/GetTenantById/`
+- [X] T063 [US5] Create `ListTenantsQuery` and handler in `src/CliniKey.Application/Features/Tenants/Queries/ListTenants/`
 - [X] T064 [US5] Create `UpdateClinicContactCommand`, validator, and handler in `src/CliniKey.Application/Features/Tenants/Commands/UpdateClinicContact/`
-- [X] T065 [US5] Add `GET /api/v1/tenants/clinics`, `GET /api/v1/tenants/clinics/{clinicId}`, and `PUT /api/v1/tenants/clinics/{clinicId}/contact` endpoints to `src/CliniKey.API/Controllers/TenantsController.cs`
+- [X] T065 [US5] Add `GET /api/v1/tenants`, `GET /api/v1/tenants/{tenantId}`, and `PUT /api/v1/tenants/{tenantId}/clinics/{clinicId}/contact` endpoints to `src/CliniKey.API/Controllers/TenantsController.cs`
 
 **Checkpoint**: Clinic contact details are visible, validated, unique, and updateable.
 
@@ -244,7 +244,7 @@ All selected phases -> Polish
 
 ```text
 Task: "Add clinic creation/contact validation tests in tests/CliniKey.Tests/Domain/ClinicTests.cs"
-Task: "Add onboarding handler tests for success, duplicate phone, and provisioning failure rollback in tests/CliniKey.Tests/Application/OnboardClinicCommandHandlerTests.cs"
+Task: "Add onboarding handler tests for success, duplicate phone, and provisioning failure rollback in tests/CliniKey.Tests/Application/OnboardTenantCommandHandlerTests.cs"
 Task: "Add provisioning integration tests for schema creation, migration application, and no orphan state in tests/CliniKey.Tests/Infrastructure/TenantProvisioningIntegrationTests.cs"
 ```
 
@@ -266,7 +266,7 @@ Task: "Add concurrent 10-tenant isolation test in tests/CliniKey.Tests/Infrastru
 1. Complete Phase 1 setup.
 2. Complete Phase 2 foundational work.
 3. Complete Phase 3 US1 onboarding.
-4. Stop and validate `POST /api/v1/tenants/clinics` plus schema creation/migration.
+4. Stop and validate `POST /api/v1/tenants` plus schema creation/migration.
 
 ### Incremental Delivery
 

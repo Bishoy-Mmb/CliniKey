@@ -46,7 +46,7 @@ specs/003-tenant-provisioning/
 |-- data-model.md
 |-- quickstart.md
 |-- contracts/
-|   |-- clinics.md
+|   |-- tenants.md
 |   |-- tenant-resolution.md
 |   `-- tenant-migrations.md
 `-- tasks.md              # Phase 2 output via /speckit.tasks
@@ -83,14 +83,14 @@ src/
 |   `-- Features/
 |       `-- Tenants/
 |           |-- Commands/
-|           |   |-- OnboardClinic/       # V1 creates Tenant + first Clinic
-|           |   |-- ActivateClinic/
-|           |   |-- DeactivateClinic/
+|           |   |-- OnboardTenant/       # V1 creates Tenant + first Clinic
+|           |   |-- ActivateTenant/
+|           |   |-- DeactivateTenant/
 |           |   |-- UpdateClinicContact/
 |           |   `-- MigrateTenantSchemas/
 |           `-- Queries/
-|               |-- GetClinicById/
-|               |-- ListClinics/
+|               |-- GetTenantById/
+|               |-- ListTenants/
 |               `-- GetTenantSchemaHealth/
 |-- CliniKey.Infrastructure/
 |   |-- Persistence/
@@ -140,7 +140,7 @@ Completed artifacts:
 
 - [data-model.md](./data-model.md)
 - [quickstart.md](./quickstart.md)
-- [contracts/clinics.md](./contracts/clinics.md)
+- [contracts/tenants.md](./contracts/tenants.md)
 - [contracts/tenant-resolution.md](./contracts/tenant-resolution.md)
 - [contracts/tenant-migrations.md](./contracts/tenant-migrations.md)
 

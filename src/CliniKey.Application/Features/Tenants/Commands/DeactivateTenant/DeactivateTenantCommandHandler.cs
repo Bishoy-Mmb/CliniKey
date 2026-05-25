@@ -6,26 +6,23 @@ using CliniKey.Domain.Repositories;
 using CliniKey.SharedKernel.Interfaces;
 using CliniKey.SharedKernel.Primitives;
 
-namespace CliniKey.Application.Features.Tenants.Commands.DeactivateClinic;
+namespace CliniKey.Application.Features.Tenants.Commands.DeactivateTenant;
 
-internal sealed class DeactivateClinicCommandHandler : ICommandHandler<DeactivateClinicCommand>
+internal sealed class DeactivateTenantCommandHandler : ICommandHandler<DeactivateTenantCommand>
 {
-    private readonly IClinicRepository _clinicRepository;
     private readonly ITenantRepository _tenantRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly ITenantProvisioningService _tenantProvisioningService;
     private readonly ITenantRegistry _tenantRegistry;
     private readonly IUnitOfWork _unitOfWork;
 
-    public DeactivateClinicCommandHandler(
-        IClinicRepository clinicRepository,
+    public DeactivateTenantCommandHandler(
         ITenantRepository tenantRepository,
         ICurrentUserService currentUserService,
         ITenantProvisioningService tenantProvisioningService,
         ITenantRegistry tenantRegistry,
         IUnitOfWork unitOfWork)
     {
-        _clinicRepository = clinicRepository;
         _tenantRepository = tenantRepository;
         _currentUserService = currentUserService;
         _tenantProvisioningService = tenantProvisioningService;
@@ -33,15 +30,9 @@ internal sealed class DeactivateClinicCommandHandler : ICommandHandler<Deactivat
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<Result> Handle(DeactivateClinicCommand request, CancellationToken cancellationToken)
+    public async Task<Result> Handle(DeactivateTenantCommand request, CancellationToken cancellationToken)
     {
-        var clinic = await _clinicRepository.GetByIdAsync(request.ClinicId, cancellationToken);
-        if (clinic is null)
-        {
-            return Result.Failure(ClinicErrors.NotFound);
-        }
-
-        var tenant = await _tenantRepository.GetByIdAsync(clinic.TenantId, cancellationToken);
+        var tenant = await _tenantRepository.GetByIdAsync(request.TenantId, cancellationToken);
         if (tenant is null)
         {
             return Result.Failure(TenantErrors.NotFound);

@@ -1,6 +1,6 @@
 using CliniKey.Application.Abstractions.Identity;
 using CliniKey.Application.Abstractions.Tenancy;
-using CliniKey.Application.Features.Tenants.Commands.OnboardClinic;
+using CliniKey.Application.Features.Tenants.Commands.OnboardTenant;
 using CliniKey.Domain.Entities;
 using CliniKey.Domain.Errors;
 using CliniKey.Domain.Repositories;
@@ -13,7 +13,7 @@ using NSubstitute;
 
 namespace CliniKey.Tests.Application;
 
-public class OnboardClinicCommandHandlerTests
+public class OnboardTenantCommandHandlerTests
 {
     private readonly IClinicRepository _clinicRepository;
     private readonly ITenantRepository _tenantRepository;
@@ -22,9 +22,9 @@ public class OnboardClinicCommandHandlerTests
     private readonly ITenantSchemaNameGenerator _tenantSchemaNameGenerator;
     private readonly IUnitOfWork _unitOfWork;
     private readonly FakeTimeProvider _clock;
-    private readonly OnboardClinicCommandHandler _handler;
+    private readonly OnboardTenantCommandHandler _handler;
 
-    public OnboardClinicCommandHandlerTests()
+    public OnboardTenantCommandHandlerTests()
     {
         _clinicRepository = Substitute.For<IClinicRepository>();
         _tenantRepository = Substitute.For<ITenantRepository>();
@@ -35,7 +35,7 @@ public class OnboardClinicCommandHandlerTests
         _clock = new FakeTimeProvider(new DateTimeOffset(2026, 5, 23, 10, 0, 0, TimeSpan.Zero));
         _tenantSchemaNameGenerator.Generate(Arg.Any<Guid>())
             .Returns(call => $"tenant_{call.Arg<Guid>().ToString("N")}");
-        _handler = new OnboardClinicCommandHandler(
+        _handler = new OnboardTenantCommandHandler(
             _clinicRepository,
             _tenantRepository,
             _tenantProvisioningService,
@@ -48,7 +48,7 @@ public class OnboardClinicCommandHandlerTests
     [Fact]
     public async Task Handle_NoConflictAndProvisioningSucceeds_ReturnsProvisionedClinic()
     {
-        var command = new OnboardClinicCommand("Cairo Dental Center", "01112345678", "15 Tahrir St");
+        var command = new OnboardTenantCommand("Cairo Dental Center", "01112345678", "15 Tahrir St");
         _clinicRepository.ExistsByPhoneAsync(Arg.Any<PhoneNumber>(), null, Arg.Any<CancellationToken>()).Returns(false);
         _tenantProvisioningService
             .ProvisionAsync(Arg.Any<Tenant>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
@@ -76,7 +76,7 @@ public class OnboardClinicCommandHandlerTests
     [Fact]
     public async Task Handle_DuplicatePhone_ReturnsConflictWithoutProvisioning()
     {
-        var command = new OnboardClinicCommand("Cairo Dental Center", "01112345678", "15 Tahrir St");
+        var command = new OnboardTenantCommand("Cairo Dental Center", "01112345678", "15 Tahrir St");
         _clinicRepository.ExistsByPhoneAsync(Arg.Any<PhoneNumber>(), null, Arg.Any<CancellationToken>()).Returns(true);
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -92,7 +92,7 @@ public class OnboardClinicCommandHandlerTests
     [Fact]
     public async Task Handle_ProvisioningFails_RemovesClinicAndReturnsFailure()
     {
-        var command = new OnboardClinicCommand("Cairo Dental Center", "01112345678", "15 Tahrir St");
+        var command = new OnboardTenantCommand("Cairo Dental Center", "01112345678", "15 Tahrir St");
         Clinic? addedClinic = null;
         Tenant? addedTenant = null;
         _clinicRepository.ExistsByPhoneAsync(Arg.Any<PhoneNumber>(), null, Arg.Any<CancellationToken>()).Returns(false);

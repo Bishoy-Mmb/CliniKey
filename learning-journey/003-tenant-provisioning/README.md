@@ -61,7 +61,7 @@ flowchart TB
     end
 
     Operator["Platform operator"] --> Controller["TenantsController"]
-    Controller --> Onboard["OnboardClinicCommandHandler"]
+    Controller --> Onboard["OnboardTenantCommandHandler"]
     Onboard --> Tenant
     Onboard --> Clinic
     Onboard --> Provision["TenantProvisioningService"]
@@ -90,7 +90,7 @@ queries use?"
 | --- | --- |
 | Domain tenant boundary | [Tenant.cs](../../src/CliniKey.Domain/Entities/Tenant.cs), [TenantStatus.cs](../../src/CliniKey.Domain/Enums/TenantStatus.cs), [TenantProvisioningStatus.cs](../../src/CliniKey.Domain/Enums/TenantProvisioningStatus.cs), [TenantTests.cs](../../tests/CliniKey.Tests/Domain/TenantTests.cs) |
 | Clinic branch model | [Clinic.cs](../../src/CliniKey.Domain/Entities/Clinic.cs), [ClinicTests.cs](../../tests/CliniKey.Tests/Domain/ClinicTests.cs) |
-| Onboarding orchestration | [OnboardClinicCommandHandler.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardClinic/OnboardClinicCommandHandler.cs), [OnboardClinicCommandHandlerTests.cs](../../tests/CliniKey.Tests/Application/OnboardClinicCommandHandlerTests.cs) |
+| Onboarding orchestration | [OnboardTenantCommandHandler.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardTenant/OnboardTenantCommandHandler.cs), [OnboardTenantCommandHandlerTests.cs](../../tests/CliniKey.Tests/Application/OnboardTenantCommandHandlerTests.cs) |
 | Provisioning infrastructure | [TenantProvisioningService.cs](../../src/CliniKey.Infrastructure/Persistence/TenantProvisioningService.cs), [TenantMigrationService.cs](../../src/CliniKey.Infrastructure/Persistence/TenantMigrationService.cs) |
 | Registry and request resolution | [TenantRegistry.cs](../../src/CliniKey.Infrastructure/Persistence/TenantRegistry.cs), [TenantResolutionMiddleware.cs](../../src/CliniKey.API/Middleware/TenantResolutionMiddleware.cs), [TenantContext.cs](../../src/CliniKey.Infrastructure/Persistence/TenantContext.cs) |
 | Shared mappings | [TenantConfiguration.cs](../../src/CliniKey.Infrastructure/Persistence/Configurations/TenantConfiguration.cs), [ClinicConfiguration.cs](../../src/CliniKey.Infrastructure/Persistence/Configurations/ClinicConfiguration.cs), [SharedDbContext.cs](../../src/CliniKey.Infrastructure/Persistence/SharedDbContext.cs) |
@@ -134,7 +134,7 @@ should still be run before launch sign-off.
 
 1. Read [feature-flow.md](./feature-flow.md) for the full story.
 2. Read [Tenant.cs](../../src/CliniKey.Domain/Entities/Tenant.cs) beside [Clinic.cs](../../src/CliniKey.Domain/Entities/Clinic.cs).
-3. Read [OnboardClinicCommandHandler.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardClinic/OnboardClinicCommandHandler.cs).
+3. Read [OnboardTenantCommandHandler.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardTenant/OnboardTenantCommandHandler.cs).
 4. Read [TenantProvisioningService.cs](../../src/CliniKey.Infrastructure/Persistence/TenantProvisioningService.cs) and [TenantMigrationService.cs](../../src/CliniKey.Infrastructure/Persistence/TenantMigrationService.cs).
 5. Read [TenantRegistry.cs](../../src/CliniKey.Infrastructure/Persistence/TenantRegistry.cs) and [TenantResolutionMiddleware.cs](../../src/CliniKey.API/Middleware/TenantResolutionMiddleware.cs).
 6. Finish with [code-reading-guide.md](./code-reading-guide.md) and its exercises.

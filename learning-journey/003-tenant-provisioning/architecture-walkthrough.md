@@ -83,7 +83,7 @@ practice boundary and its first branch.
 sequenceDiagram
     participant Operator
     participant API as TenantsController
-    participant Handler as OnboardClinicCommandHandler
+    participant Handler as OnboardTenantCommandHandler
     participant Tenant
     participant Clinic
     participant Shared as shared schema
@@ -91,8 +91,8 @@ sequenceDiagram
     participant Migration as TenantMigrationService
     participant TenantDb as tenant_* schema
 
-    Operator->>API: POST /api/v1/tenants/clinics
-    API->>Handler: OnboardClinicCommand
+    Operator->>API: POST /api/v1/tenants
+    API->>Handler: OnboardTenantCommand
     Handler->>Handler: Validate phone and duplicate branch phone
     Handler->>Tenant: Tenant.Create(tenantId, name, schemaName)
     Tenant-->>Handler: TenantCreatedEvent, Pending provisioning
@@ -111,8 +111,8 @@ sequenceDiagram
 
 Key files:
 
-- [OnboardClinicCommandHandler.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardClinic/OnboardClinicCommandHandler.cs)
-- [OnboardClinicResponse.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardClinic/OnboardClinicResponse.cs)
+- [OnboardTenantCommandHandler.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardTenant/OnboardTenantCommandHandler.cs)
+- [OnboardTenantResponse.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardTenant/OnboardTenantResponse.cs)
 - [Tenant.cs](../../src/CliniKey.Domain/Entities/Tenant.cs)
 - [Clinic.cs](../../src/CliniKey.Domain/Entities/Clinic.cs)
 - [TenantProvisioningService.cs](../../src/CliniKey.Infrastructure/Persistence/TenantProvisioningService.cs)
@@ -210,12 +210,12 @@ The migrations are split by responsibility:
 [TenantsController.cs](../../src/CliniKey.API/Controllers/TenantsController.cs)
 contains platform control-plane endpoints:
 
-- `POST /api/v1/tenants/clinics`
-- `GET /api/v1/tenants/clinics`
-- `GET /api/v1/tenants/clinics/{clinicId}`
-- `PUT /api/v1/tenants/clinics/{clinicId}/contact`
-- `POST /api/v1/tenants/clinics/{clinicId}/deactivate`
-- `POST /api/v1/tenants/clinics/{clinicId}/activate`
+- `POST /api/v1/tenants`
+- `GET /api/v1/tenants`
+- `GET /api/v1/tenants/{tenantId}`
+- `PUT /api/v1/tenants/{tenantId}/clinics/{clinicId}/contact`
+- `POST /api/v1/tenants/{tenantId}/deactivate`
+- `POST /api/v1/tenants/{tenantId}/activate`
 - `POST /api/v1/tenants/migrations/apply`
 - `GET /api/v1/tenants/migrations/status`
 
@@ -258,7 +258,7 @@ connection state is how tenant data leaks happen.
 | Test area | Files | What it proves |
 | --- | --- | --- |
 | Domain | [TenantTests.cs](../../tests/CliniKey.Tests/Domain/TenantTests.cs), [ClinicTests.cs](../../tests/CliniKey.Tests/Domain/ClinicTests.cs) | State transitions, events, timestamps |
-| Application | [OnboardClinicCommandHandlerTests.cs](../../tests/CliniKey.Tests/Application/OnboardClinicCommandHandlerTests.cs), [ClinicLifecycleCommandHandlerTests.cs](../../tests/CliniKey.Tests/Application/ClinicLifecycleCommandHandlerTests.cs), [TenantMigrationCommandHandlerTests.cs](../../tests/CliniKey.Tests/Application/TenantMigrationCommandHandlerTests.cs) | Use-case orchestration |
+| Application | [OnboardTenantCommandHandlerTests.cs](../../tests/CliniKey.Tests/Application/OnboardTenantCommandHandlerTests.cs), [ClinicLifecycleCommandHandlerTests.cs](../../tests/CliniKey.Tests/Application/ClinicLifecycleCommandHandlerTests.cs), [TenantMigrationCommandHandlerTests.cs](../../tests/CliniKey.Tests/Application/TenantMigrationCommandHandlerTests.cs) | Use-case orchestration |
 | API | [TenantsControllerTests.cs](../../tests/CliniKey.Tests/API/TenantsControllerTests.cs), [TenantResolutionMiddlewareTests.cs](../../tests/CliniKey.Tests/API/TenantResolutionMiddlewareTests.cs) | Thin controllers and middleware gates |
 | Infrastructure | [TenantProvisioningIntegrationTests.cs](../../tests/CliniKey.Tests/Infrastructure/TenantProvisioningIntegrationTests.cs), [TenantLifecycleAccessTests.cs](../../tests/CliniKey.Tests/Infrastructure/TenantLifecycleAccessTests.cs), [TenantSchemaSwitchingTests.cs](../../tests/CliniKey.Tests/Infrastructure/TenantSchemaSwitchingTests.cs), [TenantDapperConnectionTests.cs](../../tests/CliniKey.Tests/Infrastructure/TenantDapperConnectionTests.cs) | PostgreSQL behavior and tenant isolation |
 

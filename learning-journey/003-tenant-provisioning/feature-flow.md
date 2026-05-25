@@ -12,8 +12,8 @@ The public workflow is still "onboard a clinic". The internal workflow is
 
 ```mermaid
 flowchart TD
-    A["POST /api/v1/tenants/clinics"] --> B["TenantsController.OnboardClinic"]
-    B --> C["MediatR sends OnboardClinicCommand"]
+    A["POST /api/v1/tenants"] --> B["TenantsController.OnboardTenant"]
+    B --> C["MediatR sends OnboardTenantCommand"]
     C --> D["Validate phone value object"]
     D --> E["Check duplicate clinic phone"]
     E --> F["Generate tenantId and clinicId"]
@@ -38,11 +38,11 @@ flowchart TD
 The route is implemented in [TenantsController.cs](../../src/CliniKey.API/Controllers/TenantsController.cs).
 
 ```http
-POST /api/v1/tenants/clinics
+POST /api/v1/tenants
 ```
 
 The controller is intentionally thin. It sends
-[OnboardClinicCommand.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardClinic/OnboardClinicCommand.cs)
+[OnboardTenantCommand.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardTenant/OnboardTenantCommand.cs)
 through MediatR and returns `CreatedAtAction` when the command succeeds.
 
 The endpoint is protected by `Policies.CanManageTenants`, so this is a platform
@@ -50,7 +50,7 @@ control-plane action, not a normal tenant-scoped clinic-user action.
 
 ### Step 2: Application Handler Coordinates The Story
 
-[OnboardClinicCommandHandler.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardClinic/OnboardClinicCommandHandler.cs)
+[OnboardTenantCommandHandler.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardTenant/OnboardTenantCommandHandler.cs)
 does the orchestration:
 
 1. Build a `PhoneNumber` value object.
@@ -153,7 +153,7 @@ CurrentMigration = baseline migration id
 ```
 
 The response is shaped by
-[OnboardClinicResponse.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardClinic/OnboardClinicResponse.cs)
+[OnboardTenantResponse.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardTenant/OnboardTenantResponse.cs)
 and includes both `TenantId` and `ClinicId`.
 
 ## Flow 2: Provisioning Failure
@@ -175,8 +175,8 @@ flowchart TD
 Important files:
 
 - [TenantProvisioningService.cs](../../src/CliniKey.Infrastructure/Persistence/TenantProvisioningService.cs)
-- [OnboardClinicCommandHandler.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardClinic/OnboardClinicCommandHandler.cs)
-- [OnboardClinicCommandHandlerTests.cs](../../tests/CliniKey.Tests/Application/OnboardClinicCommandHandlerTests.cs)
+- [OnboardTenantCommandHandler.cs](../../src/CliniKey.Application/Features/Tenants/Commands/OnboardTenant/OnboardTenantCommandHandler.cs)
+- [OnboardTenantCommandHandlerTests.cs](../../tests/CliniKey.Tests/Application/OnboardTenantCommandHandlerTests.cs)
 - [TenantProvisioningIntegrationTests.cs](../../tests/CliniKey.Tests/Infrastructure/TenantProvisioningIntegrationTests.cs)
 
 The cleanup is best effort. If cleanup itself fails, the comment in the handler
@@ -224,15 +224,15 @@ Provisioning is day one. The feature also supports day-two tenant operations.
 
 | Operation | Flow |
 | --- | --- |
-| Deactivate | Endpoint receives `clinicId`, resolves the branch, loads the owning tenant, calls `tenant.Deactivate`, saves, invalidates registry cache, writes audit |
-| Activate | Endpoint receives `clinicId`, resolves the branch, loads the owning tenant, verifies healthy schema, calls `tenant.Activate`, saves, invalidates cache, writes audit |
+| Deactivate | Endpoint receives `tenantId`, resolves the branch, loads the owning tenant, calls `tenant.Deactivate`, saves, invalidates registry cache, writes audit |
+| Activate | Endpoint receives `tenantId`, resolves the branch, loads the owning tenant, verifies healthy schema, calls `tenant.Activate`, saves, invalidates cache, writes audit |
 | Apply migrations | Command selects tenant targets, applies pending migrations by schema, marks tenant schema health, invalidates registry cache |
 | Status | Query lists tenants and reports schema health/current migration |
 
 Start with:
 
-- [DeactivateClinicCommandHandler.cs](../../src/CliniKey.Application/Features/Tenants/Commands/DeactivateClinic/DeactivateClinicCommandHandler.cs)
-- [ActivateClinicCommandHandler.cs](../../src/CliniKey.Application/Features/Tenants/Commands/ActivateClinic/ActivateClinicCommandHandler.cs)
+- [DeactivateTenantCommandHandler.cs](../../src/CliniKey.Application/Features/Tenants/Commands/DeactivateTenant/DeactivateTenantCommandHandler.cs)
+- [ActivateTenantCommandHandler.cs](../../src/CliniKey.Application/Features/Tenants/Commands/ActivateTenant/ActivateTenantCommandHandler.cs)
 - [MigrateTenantSchemasCommandHandler.cs](../../src/CliniKey.Application/Features/Tenants/Commands/MigrateTenantSchemas/MigrateTenantSchemasCommandHandler.cs)
 - [GetTenantSchemaHealthQueryHandler.cs](../../src/CliniKey.Application/Features/Tenants/Queries/GetTenantSchemaHealth/GetTenantSchemaHealthQueryHandler.cs)
 

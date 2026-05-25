@@ -15,13 +15,13 @@ Apply pending tenant operational migrations to all matching tenant schemas.
 ```json
 {
   "includeInactive": true,
-  "clinicIds": [
+  "tenantIds": [
     "3f0d1b0b-4e0f-4bcb-9fb9-63f03e432c0f"
   ]
 }
 ```
 
-`clinicIds` is optional. When omitted, all tenant schemas are considered. Inactive clinics are skipped unless `includeInactive` is true.
+`tenantIds` is optional. When omitted, all tenant schemas are considered. Inactive tenants are skipped unless `includeInactive` is true.
 
 ### Response `200 OK`
 
@@ -32,7 +32,7 @@ Apply pending tenant operational migrations to all matching tenant schemas.
   "expectedMigration": "202605230001_InitialTenantOperationalSchema",
   "results": [
     {
-      "clinicId": "3f0d1b0b-4e0f-4bcb-9fb9-63f03e432c0f",
+      "tenantId": "3f0d1b0b-4e0f-4bcb-9fb9-63f03e432c0f",
       "schemaName": "tenant_3f0d1b0b",
       "status": "Succeeded",
       "previousMigration": "202605180001_InitialDomainSchema",
@@ -63,9 +63,9 @@ Return tenant schema migration and health summary.
   "expectedMigration": "202605230001_InitialTenantOperationalSchema",
   "items": [
     {
-      "clinicId": "3f0d1b0b-4e0f-4bcb-9fb9-63f03e432c0f",
+      "tenantId": "3f0d1b0b-4e0f-4bcb-9fb9-63f03e432c0f",
       "schemaName": "tenant_3f0d1b0b",
-      "clinicStatus": "Active",
+      "tenantStatus": "Active",
       "schemaHealthStatus": "Healthy",
       "currentMigration": "202605230001_InitialTenantOperationalSchema",
       "lastSchemaVerifiedAtUtc": "2026-05-23T11:00:04Z",
@@ -88,4 +88,3 @@ When `Tenancy:RunTenantMigrationsOnStartup` is true:
 5. Do not accept tenant-scoped traffic for schemas marked `Unhealthy`.
 
 Production may run migrations through the explicit endpoint/command instead of startup.
-

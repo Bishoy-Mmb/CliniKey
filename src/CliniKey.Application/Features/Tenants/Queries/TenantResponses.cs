@@ -2,7 +2,7 @@ using CliniKey.Domain.Entities;
 
 namespace CliniKey.Application.Features.Tenants.Queries;
 
-public sealed record ClinicResponse(
+public sealed record TenantResponse(
     Guid TenantId,
     Guid ClinicId,
     string Name,
@@ -22,9 +22,9 @@ public sealed record ClinicResponse(
     DateTime CreatedAtUtc,
     DateTime? UpdatedAtUtc)
 {
-    public static ClinicResponse FromTenantAndClinic(Tenant tenant, Clinic clinic)
+    public static TenantResponse FromTenantAndClinic(Tenant tenant, Clinic clinic)
     {
-        return new ClinicResponse(
+        return new TenantResponse(
             tenant.Id,
             clinic.Id,
             clinic.Name,
@@ -46,7 +46,7 @@ public sealed record ClinicResponse(
     }
 }
 
-public sealed record ClinicListItemResponse(
+public sealed record TenantListItemResponse(
     Guid TenantId,
     Guid ClinicId,
     string Name,
@@ -59,10 +59,10 @@ public sealed record ClinicListItemResponse(
     string SchemaHealthStatus,
     DateTime? LastSchemaVerifiedAtUtc)
 {
-    public static ClinicListItemResponse FromTenant(Tenant tenant)
+    public static TenantListItemResponse FromTenant(Tenant tenant)
     {
         var clinic = tenant.Clinics.OrderBy(c => c.CreatedAtUtc).First();
-        return new ClinicListItemResponse(
+        return new TenantListItemResponse(
             tenant.Id,
             clinic.Id,
             clinic.Name,
@@ -77,8 +77,8 @@ public sealed record ClinicListItemResponse(
     }
 }
 
-public sealed record ClinicListResponse(
-    IReadOnlyList<ClinicListItemResponse> Items,
+public sealed record TenantListResponse(
+    IReadOnlyList<TenantListItemResponse> Items,
     int Page,
     int PageSize,
     int TotalCount);

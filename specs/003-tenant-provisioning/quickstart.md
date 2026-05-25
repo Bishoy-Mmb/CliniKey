@@ -45,7 +45,7 @@ Development may enable startup tenant migration:
 
 ## Database Migrations
 
-Generate shared-schema migrations for clinic registry and cross-tenant tables:
+Generate shared-schema migrations for the tenant registry, clinic branches, and cross-tenant tables:
 
 ```bash
 dotnet ef migrations add AddSharedTenantRegistry \
@@ -89,7 +89,7 @@ dotnet run --project src/CliniKey.API
 Onboard a clinic:
 
 ```bash
-curl -X POST http://localhost:5000/api/v1/tenants/clinics \
+curl -X POST http://localhost:5000/api/v1/tenants \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer {platformOperatorToken}" \
   -d '{
@@ -99,24 +99,24 @@ curl -X POST http://localhost:5000/api/v1/tenants/clinics \
   }'
 ```
 
-Verify the clinic registry:
+Verify the tenant registry:
 
 ```bash
-curl http://localhost:5000/api/v1/tenants/clinics \
+curl http://localhost:5000/api/v1/tenants \
   -H "Authorization: Bearer {platformOperatorToken}"
 ```
 
-Retrieve one clinic:
+Retrieve one tenant:
 
 ```bash
-curl http://localhost:5000/api/v1/tenants/clinics/{clinicId} \
+curl http://localhost:5000/api/v1/tenants/{tenantId} \
   -H "Authorization: Bearer {platformOperatorToken}"
 ```
 
 Update clinic contact details:
 
 ```bash
-curl -X PUT http://localhost:5000/api/v1/tenants/clinics/{clinicId}/contact \
+curl -X PUT http://localhost:5000/api/v1/tenants/{tenantId}/clinics/{clinicId}/contact \
   -H "Authorization: Bearer {platformOperatorToken}" \
   -H "Content-Type: application/json" \
   -d '{
@@ -125,7 +125,7 @@ curl -X PUT http://localhost:5000/api/v1/tenants/clinics/{clinicId}/contact \
   }'
 ```
 
-Verify tenant schema isolation by logging in as a user whose JWT contains the new clinic ID and creating/querying tenant data:
+Verify tenant schema isolation by logging in as a user whose JWT contains the new tenant ID and creating/querying tenant data:
 
 ```bash
 curl http://localhost:5000/api/v1/patients \
@@ -135,7 +135,7 @@ curl http://localhost:5000/api/v1/patients \
 Deactivate a clinic:
 
 ```bash
-curl -X POST http://localhost:5000/api/v1/tenants/clinics/{clinicId}/deactivate \
+curl -X POST http://localhost:5000/api/v1/tenants/{tenantId}/deactivate \
   -H "Authorization: Bearer {platformOperatorToken}" \
   -H "Content-Type: application/json" \
   -d '{"reason":"Temporary closure"}'
@@ -144,7 +144,7 @@ curl -X POST http://localhost:5000/api/v1/tenants/clinics/{clinicId}/deactivate 
 Reactivate it:
 
 ```bash
-curl -X POST http://localhost:5000/api/v1/tenants/clinics/{clinicId}/activate \
+curl -X POST http://localhost:5000/api/v1/tenants/{tenantId}/activate \
   -H "Authorization: Bearer {platformOperatorToken}"
 ```
 

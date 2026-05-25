@@ -1,8 +1,8 @@
 using CliniKey.Domain.Entities;
 
-namespace CliniKey.Application.Features.Tenants.Commands.OnboardClinic;
+namespace CliniKey.Application.Features.Tenants.Commands.OnboardTenant;
 
-public sealed record OnboardClinicResponse(
+public sealed record OnboardTenantResponse(
     Guid TenantId,
     Guid ClinicId,
     string Name,
@@ -16,9 +16,9 @@ public sealed record OnboardClinicResponse(
     string? CurrentMigration,
     DateTime CreatedAtUtc)
 {
-    public static OnboardClinicResponse FromTenantAndClinic(Tenant tenant, Clinic clinic)
+    public static OnboardTenantResponse FromTenantAndClinic(Tenant tenant, Clinic clinic)
     {
-        return new OnboardClinicResponse(
+        return new OnboardTenantResponse(
             tenant.Id,
             clinic.Id,
             clinic.Name,

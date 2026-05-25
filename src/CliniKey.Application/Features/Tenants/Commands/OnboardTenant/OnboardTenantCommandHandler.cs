@@ -8,9 +8,9 @@ using CliniKey.Domain.ValueObjects;
 using CliniKey.SharedKernel.Interfaces;
 using CliniKey.SharedKernel.Primitives;
 
-namespace CliniKey.Application.Features.Tenants.Commands.OnboardClinic;
+namespace CliniKey.Application.Features.Tenants.Commands.OnboardTenant;
 
-internal sealed class OnboardClinicCommandHandler : ICommandHandler<OnboardClinicCommand, OnboardClinicResponse>
+internal sealed class OnboardTenantCommandHandler : ICommandHandler<OnboardTenantCommand, OnboardTenantResponse>
 {
     private readonly IClinicRepository _clinicRepository;
     private readonly ITenantRepository _tenantRepository;
@@ -20,7 +20,7 @@ internal sealed class OnboardClinicCommandHandler : ICommandHandler<OnboardClini
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _clock;
 
-    public OnboardClinicCommandHandler(
+    public OnboardTenantCommandHandler(
         IClinicRepository clinicRepository,
         ITenantRepository tenantRepository,
         ITenantProvisioningService tenantProvisioningService,
@@ -38,19 +38,19 @@ internal sealed class OnboardClinicCommandHandler : ICommandHandler<OnboardClini
         _clock = clock;
     }
 
-    public async Task<Result<OnboardClinicResponse>> Handle(
-        OnboardClinicCommand request,
+    public async Task<Result<OnboardTenantResponse>> Handle(
+        OnboardTenantCommand request,
         CancellationToken cancellationToken)
     {
         var phoneResult = PhoneNumber.Create(request.Phone);
         if (phoneResult.IsFailure)
         {
-            return Result.Failure<OnboardClinicResponse>(phoneResult.Error);
+            return Result.Failure<OnboardTenantResponse>(phoneResult.Error);
         }
 
         if (await _clinicRepository.ExistsByPhoneAsync(phoneResult.Value, null, cancellationToken))
         {
-            return Result.Failure<OnboardClinicResponse>(TenantErrors.DuplicatePhone);
+            return Result.Failure<OnboardTenantResponse>(TenantErrors.DuplicatePhone);
         }
 
         var tenantId = Guid.NewGuid();
@@ -59,13 +59,13 @@ internal sealed class OnboardClinicCommandHandler : ICommandHandler<OnboardClini
         var tenantResult = Tenant.Create(tenantId, request.Name, schemaName, _clock);
         if (tenantResult.IsFailure)
         {
-            return Result.Failure<OnboardClinicResponse>(tenantResult.Error);
+            return Result.Failure<OnboardTenantResponse>(tenantResult.Error);
         }
 
         var clinicResult = Clinic.Create(clinicId, tenantId, request.Name, request.Phone, request.Address, _clock);
         if (clinicResult.IsFailure)
         {
-            return Result.Failure<OnboardClinicResponse>(clinicResult.Error);
+            return Result.Failure<OnboardTenantResponse>(clinicResult.Error);
         }
 
         var tenant = tenantResult.Value;
@@ -90,17 +90,17 @@ internal sealed class OnboardClinicCommandHandler : ICommandHandler<OnboardClini
             _clinicRepository.Remove(clinic);
             _tenantRepository.Remove(tenant);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
-            return Result.Failure<OnboardClinicResponse>(provisioningResult.Error);
+            return Result.Failure<OnboardTenantResponse>(provisioningResult.Error);
         }
 
         var provisionedResult = tenant.MarkProvisioned(provisioningResult.Value);
         if (provisionedResult.IsFailure)
         {
-            return Result.Failure<OnboardClinicResponse>(provisionedResult.Error);
+            return Result.Failure<OnboardTenantResponse>(provisionedResult.Error);
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return OnboardClinicResponse.FromTenantAndClinic(tenant, clinic);
+        return OnboardTenantResponse.FromTenantAndClinic(tenant, clinic);
     }
 }

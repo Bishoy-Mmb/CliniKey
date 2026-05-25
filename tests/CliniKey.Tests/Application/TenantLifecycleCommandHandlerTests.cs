@@ -1,7 +1,7 @@
 using CliniKey.Application.Abstractions.Identity;
 using CliniKey.Application.Abstractions.Tenancy;
-using CliniKey.Application.Features.Tenants.Commands.ActivateClinic;
-using CliniKey.Application.Features.Tenants.Commands.DeactivateClinic;
+using CliniKey.Application.Features.Tenants.Commands.ActivateTenant;
+using CliniKey.Application.Features.Tenants.Commands.DeactivateTenant;
 using CliniKey.Domain.Entities;
 using CliniKey.Domain.Enums;
 using CliniKey.Domain.Errors;
@@ -13,9 +13,8 @@ using NSubstitute;
 
 namespace CliniKey.Tests.Application;
 
-public class ClinicLifecycleCommandHandlerTests
+public class TenantLifecycleCommandHandlerTests
 {
-    private readonly IClinicRepository _clinicRepository;
     private readonly ITenantRepository _tenantRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly ITenantProvisioningService _tenantProvisioningService;
@@ -24,9 +23,8 @@ public class ClinicLifecycleCommandHandlerTests
     private readonly FakeTimeProvider _clock;
     private readonly Guid _operatorUserId = Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
 
-    public ClinicLifecycleCommandHandlerTests()
+    public TenantLifecycleCommandHandlerTests()
     {
-        _clinicRepository = Substitute.For<IClinicRepository>();
         _tenantRepository = Substitute.For<ITenantRepository>();
         _currentUserService = Substitute.For<ICurrentUserService>();
         _tenantProvisioningService = Substitute.For<ITenantProvisioningService>();
@@ -37,13 +35,11 @@ public class ClinicLifecycleCommandHandlerTests
     }
 
     [Fact]
-    public async Task DeactivateClinic_ActiveClinic_DeactivatesInvalidatesCacheAndAudits()
+    public async Task DeactivateTenant_ActiveTenant_DeactivatesInvalidatesCacheAndAudits()
     {
         var (tenant, clinic) = CreateProvisionedTenantAndClinic();
-        _clinicRepository.GetByIdAsync(clinic.Id, Arg.Any<CancellationToken>()).Returns(clinic);
         _tenantRepository.GetByIdAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
-        var handler = new DeactivateClinicCommandHandler(
-            _clinicRepository,
+        var handler = new DeactivateTenantCommandHandler(
             _tenantRepository,
             _currentUserService,
             _tenantProvisioningService,
@@ -51,7 +47,7 @@ public class ClinicLifecycleCommandHandlerTests
             _unitOfWork);
 
         var result = await handler.Handle(
-            new DeactivateClinicCommand(clinic.Id, "Temporary closure"),
+            new DeactivateTenantCommand(tenant.Id, "Temporary closure"),
             CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -69,40 +65,37 @@ public class ClinicLifecycleCommandHandlerTests
     }
 
     [Fact]
-    public async Task DeactivateClinic_MissingClinic_ReturnsNotFound()
+    public async Task DeactivateTenant_MissingTenant_ReturnsNotFound()
     {
-        var clinicId = Guid.NewGuid();
-        var handler = new DeactivateClinicCommandHandler(
-            _clinicRepository,
+        var tenantId = Guid.NewGuid();
+        var handler = new DeactivateTenantCommandHandler(
             _tenantRepository,
             _currentUserService,
             _tenantProvisioningService,
             _tenantRegistry,
             _unitOfWork);
 
-        var result = await handler.Handle(new DeactivateClinicCommand(clinicId, null), CancellationToken.None);
+        var result = await handler.Handle(new DeactivateTenantCommand(tenantId, null), CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(ClinicErrors.NotFound);
+        result.Error.Should().Be(TenantErrors.NotFound);
         await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task ActivateClinic_HealthyInactiveClinic_ActivatesInvalidatesCacheAndAudits()
+    public async Task ActivateTenant_HealthyInactiveTenant_ActivatesInvalidatesCacheAndAudits()
     {
         var (tenant, clinic) = CreateProvisionedTenantAndClinic();
         tenant.Deactivate(_operatorUserId);
-        _clinicRepository.GetByIdAsync(clinic.Id, Arg.Any<CancellationToken>()).Returns(clinic);
         _tenantRepository.GetByIdAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
-        var handler = new ActivateClinicCommandHandler(
-            _clinicRepository,
+        var handler = new ActivateTenantCommandHandler(
             _tenantRepository,
             _currentUserService,
             _tenantProvisioningService,
             _tenantRegistry,
             _unitOfWork);
 
-        var result = await handler.Handle(new ActivateClinicCommand(clinic.Id), CancellationToken.None);
+        var result = await handler.Handle(new ActivateTenantCommand(tenant.Id), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         tenant.Status.Should().Be(TenantStatus.Active);
@@ -118,22 +111,20 @@ public class ClinicLifecycleCommandHandlerTests
     }
 
     [Fact]
-    public async Task ActivateClinic_UnhealthyClinic_ReturnsSchemaUnhealthy()
+    public async Task ActivateTenant_UnhealthyTenant_ReturnsSchemaUnhealthy()
     {
         var (tenant, clinic) = CreateProvisionedTenantAndClinic();
         tenant.MarkSchemaHealth(TenantSchemaHealthStatus.Unhealthy, tenant.CurrentMigration, _clock.GetUtcNow().UtcDateTime);
         tenant.Deactivate(_operatorUserId);
-        _clinicRepository.GetByIdAsync(clinic.Id, Arg.Any<CancellationToken>()).Returns(clinic);
         _tenantRepository.GetByIdAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
-        var handler = new ActivateClinicCommandHandler(
-            _clinicRepository,
+        var handler = new ActivateTenantCommandHandler(
             _tenantRepository,
             _currentUserService,
             _tenantProvisioningService,
             _tenantRegistry,
             _unitOfWork);
 
-        var result = await handler.Handle(new ActivateClinicCommand(clinic.Id), CancellationToken.None);
+        var result = await handler.Handle(new ActivateTenantCommand(tenant.Id), CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be(TenantErrors.SchemaUnhealthy);
