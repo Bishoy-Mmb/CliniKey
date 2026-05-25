@@ -16,6 +16,7 @@ namespace CliniKey.Tests.Application;
 public class ClinicLifecycleCommandHandlerTests
 {
     private readonly IClinicRepository _clinicRepository;
+    private readonly ITenantRepository _tenantRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly ITenantProvisioningService _tenantProvisioningService;
     private readonly ITenantRegistry _tenantRegistry;
@@ -26,6 +27,7 @@ public class ClinicLifecycleCommandHandlerTests
     public ClinicLifecycleCommandHandlerTests()
     {
         _clinicRepository = Substitute.For<IClinicRepository>();
+        _tenantRepository = Substitute.For<ITenantRepository>();
         _currentUserService = Substitute.For<ICurrentUserService>();
         _tenantProvisioningService = Substitute.For<ITenantProvisioningService>();
         _tenantRegistry = Substitute.For<ITenantRegistry>();
@@ -37,10 +39,12 @@ public class ClinicLifecycleCommandHandlerTests
     [Fact]
     public async Task DeactivateClinic_ActiveClinic_DeactivatesInvalidatesCacheAndAudits()
     {
-        var clinic = CreateProvisionedClinic();
+        var (tenant, clinic) = CreateProvisionedTenantAndClinic();
         _clinicRepository.GetByIdAsync(clinic.Id, Arg.Any<CancellationToken>()).Returns(clinic);
+        _tenantRepository.GetByIdAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
         var handler = new DeactivateClinicCommandHandler(
             _clinicRepository,
+            _tenantRepository,
             _currentUserService,
             _tenantProvisioningService,
             _tenantRegistry,
@@ -51,12 +55,12 @@ public class ClinicLifecycleCommandHandlerTests
             CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        clinic.Status.Should().Be(ClinicStatus.Inactive);
-        clinic.DeactivatedByUserId.Should().Be(_operatorUserId);
+        tenant.Status.Should().Be(TenantStatus.Inactive);
+        tenant.DeactivatedByUserId.Should().Be(_operatorUserId);
         await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
-        await _tenantRegistry.Received(1).InvalidateAsync(clinic.Id, Arg.Any<CancellationToken>());
+        await _tenantRegistry.Received(1).InvalidateAsync(tenant.Id, Arg.Any<CancellationToken>());
         await _tenantProvisioningService.Received(1).RecordLifecycleAuditAsync(
-            clinic,
+            tenant,
             "Deactivate",
             "Succeeded",
             "Temporary closure",
@@ -70,6 +74,7 @@ public class ClinicLifecycleCommandHandlerTests
         var clinicId = Guid.NewGuid();
         var handler = new DeactivateClinicCommandHandler(
             _clinicRepository,
+            _tenantRepository,
             _currentUserService,
             _tenantProvisioningService,
             _tenantRegistry,
@@ -85,11 +90,13 @@ public class ClinicLifecycleCommandHandlerTests
     [Fact]
     public async Task ActivateClinic_HealthyInactiveClinic_ActivatesInvalidatesCacheAndAudits()
     {
-        var clinic = CreateProvisionedClinic();
-        clinic.Deactivate(_operatorUserId);
+        var (tenant, clinic) = CreateProvisionedTenantAndClinic();
+        tenant.Deactivate(_operatorUserId);
         _clinicRepository.GetByIdAsync(clinic.Id, Arg.Any<CancellationToken>()).Returns(clinic);
+        _tenantRepository.GetByIdAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
         var handler = new ActivateClinicCommandHandler(
             _clinicRepository,
+            _tenantRepository,
             _currentUserService,
             _tenantProvisioningService,
             _tenantRegistry,
@@ -98,11 +105,11 @@ public class ClinicLifecycleCommandHandlerTests
         var result = await handler.Handle(new ActivateClinicCommand(clinic.Id), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        clinic.Status.Should().Be(ClinicStatus.Active);
+        tenant.Status.Should().Be(TenantStatus.Active);
         await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
-        await _tenantRegistry.Received(1).InvalidateAsync(clinic.Id, Arg.Any<CancellationToken>());
+        await _tenantRegistry.Received(1).InvalidateAsync(tenant.Id, Arg.Any<CancellationToken>());
         await _tenantProvisioningService.Received(1).RecordLifecycleAuditAsync(
-            clinic,
+            tenant,
             "Activate",
             "Succeeded",
             null,
@@ -113,12 +120,14 @@ public class ClinicLifecycleCommandHandlerTests
     [Fact]
     public async Task ActivateClinic_UnhealthyClinic_ReturnsSchemaUnhealthy()
     {
-        var clinic = CreateProvisionedClinic();
-        clinic.MarkSchemaHealth(TenantSchemaHealthStatus.Unhealthy, clinic.CurrentMigration, _clock.GetUtcNow().UtcDateTime);
-        clinic.Deactivate(_operatorUserId);
+        var (tenant, clinic) = CreateProvisionedTenantAndClinic();
+        tenant.MarkSchemaHealth(TenantSchemaHealthStatus.Unhealthy, tenant.CurrentMigration, _clock.GetUtcNow().UtcDateTime);
+        tenant.Deactivate(_operatorUserId);
         _clinicRepository.GetByIdAsync(clinic.Id, Arg.Any<CancellationToken>()).Returns(clinic);
+        _tenantRepository.GetByIdAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
         var handler = new ActivateClinicCommandHandler(
             _clinicRepository,
+            _tenantRepository,
             _currentUserService,
             _tenantProvisioningService,
             _tenantRegistry,
@@ -131,18 +140,24 @@ public class ClinicLifecycleCommandHandlerTests
         await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
-    private Clinic CreateProvisionedClinic()
+    private (Tenant Tenant, Clinic Clinic) CreateProvisionedTenantAndClinic()
     {
-        var clinicId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var tenant = Tenant.Create(
+            tenantId,
+            "Cairo Dental Center",
+            $"tenant_{tenantId:N}",
+            _clock).Value;
+        tenant.MarkProvisioned("202605230001_InitialTenantOperationalSchema");
+        tenant.ClearDomainEvents();
+
         var clinic = Clinic.Create(
-            clinicId,
+            Guid.NewGuid(),
+            tenant.Id,
             "Cairo Dental Center",
             "01112345678",
             "15 Tahrir St",
-            $"tenant_{clinicId:N}",
             _clock).Value;
-        clinic.MarkProvisioned("202605230001_InitialTenantOperationalSchema");
-        clinic.ClearDomainEvents();
-        return clinic;
+        return (tenant, clinic);
     }
 }

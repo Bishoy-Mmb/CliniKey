@@ -5,9 +5,9 @@ public sealed record TenantSchemaHealthResponse(
     IReadOnlyList<TenantSchemaHealthItemResponse> Items);
 
 public sealed record TenantSchemaHealthItemResponse(
-    Guid ClinicId,
+    Guid TenantId,
     string SchemaName,
-    string ClinicStatus,
+    string TenantStatus,
     string SchemaHealthStatus,
     string? CurrentMigration,
     DateTime? LastSchemaVerifiedAtUtc,

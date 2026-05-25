@@ -24,6 +24,7 @@ public sealed class AppDbContext : DbContext
 
     public DbSet<Patient> Patients { get; set; } = null!;
     public DbSet<Appointment> Appointments { get; set; } = null!;
+    public DbSet<Tenant> Tenants { get; set; } = null!;
     public DbSet<Dentist> Dentists { get; set; } = null!;
     public DbSet<Clinic> Clinics { get; set; } = null!;
     public DbSet<ClinicDentist> ClinicDentists { get; set; } = null!;
@@ -45,9 +46,11 @@ public sealed class AppDbContext : DbContext
         modelBuilder.ApplyConfiguration(new Configurations.DentistConfiguration(_sharedSchema));
         modelBuilder.ApplyConfiguration(new Configurations.InvoiceConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.PatientConfiguration());
+        modelBuilder.ApplyConfiguration(new Configurations.TenantConfiguration(_sharedSchema));
         modelBuilder.ApplyConfiguration(new Configurations.TenantProvisioningAuditLogConfiguration(_sharedSchema));
         modelBuilder.ApplyConfiguration(new Configurations.TreatmentPlanConfiguration());
 
+        modelBuilder.Entity<Tenant>().ToTable("tenants", _sharedSchema, table => table.ExcludeFromMigrations());
         modelBuilder.Entity<Clinic>().ToTable("clinics", _sharedSchema, table => table.ExcludeFromMigrations());
         modelBuilder.Entity<Dentist>().ToTable("dentists", _sharedSchema, table => table.ExcludeFromMigrations());
         modelBuilder.Entity<ClinicDentist>().ToTable("clinic_dentists", _sharedSchema, table => table.ExcludeFromMigrations());

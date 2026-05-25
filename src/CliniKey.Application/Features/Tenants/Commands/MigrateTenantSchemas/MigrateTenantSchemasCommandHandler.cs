@@ -10,20 +10,20 @@ namespace CliniKey.Application.Features.Tenants.Commands.MigrateTenantSchemas;
 
 internal sealed class MigrateTenantSchemasCommandHandler : ICommandHandler<MigrateTenantSchemasCommand, MigrateTenantSchemasResponse>
 {
-    private readonly IClinicRepository _clinicRepository;
+    private readonly ITenantRepository _tenantRepository;
     private readonly ITenantMigrationService _tenantMigrationService;
     private readonly ITenantRegistry _tenantRegistry;
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _clock;
 
     public MigrateTenantSchemasCommandHandler(
-        IClinicRepository clinicRepository,
+        ITenantRepository tenantRepository,
         ITenantMigrationService tenantMigrationService,
         ITenantRegistry tenantRegistry,
         IUnitOfWork unitOfWork,
         TimeProvider clock)
     {
-        _clinicRepository = clinicRepository;
+        _tenantRepository = tenantRepository;
         _tenantMigrationService = tenantMigrationService;
         _tenantRegistry = tenantRegistry;
         _unitOfWork = unitOfWork;
@@ -35,15 +35,15 @@ internal sealed class MigrateTenantSchemasCommandHandler : ICommandHandler<Migra
         CancellationToken cancellationToken)
     {
         var startedAtUtc = _clock.GetUtcNow().UtcDateTime;
-        ClinicStatus? statusFilter = request.IncludeInactive ? null : ClinicStatus.Active;
-        var clinicIds = request.ClinicIds?.ToHashSet();
-        var clinics = await _clinicRepository.ListAllAsync(
+        TenantStatus? statusFilter = request.IncludeInactive ? null : TenantStatus.Active;
+        var tenantIds = request.TenantIds?.ToHashSet();
+        var tenants = await _tenantRepository.ListAllAsync(
             statusFilter,
             null,
-            clinicIds,
+            tenantIds,
             cancellationToken);
-        var targets = clinics
-            .Select(c => new TenantMigrationTarget(c.Id, c.SchemaName, request.IncludeInactive))
+        var targets = tenants
+            .Select(t => new TenantMigrationTarget(t.Id, t.SchemaName, request.IncludeInactive))
             .ToList();
 
         var migrationResult = await _tenantMigrationService.ApplyPendingMigrationsAsync(targets, cancellationToken);
@@ -55,11 +55,11 @@ internal sealed class MigrateTenantSchemasCommandHandler : ICommandHandler<Migra
         var finishedAtUtc = _clock.GetUtcNow().UtcDateTime;
         foreach (var result in migrationResult.Value)
         {
-            var clinic = clinics.First(c => c.Id == result.ClinicId);
+            var tenant = tenants.First(t => t.Id == result.TenantId);
             var health = result.Status == "Succeeded"
                 ? TenantSchemaHealthStatus.Healthy
                 : TenantSchemaHealthStatus.Unhealthy;
-            var markResult = clinic.MarkSchemaHealth(health, result.CurrentMigration ?? clinic.CurrentMigration, finishedAtUtc);
+            var markResult = tenant.MarkSchemaHealth(health, result.CurrentMigration ?? tenant.CurrentMigration, finishedAtUtc);
             if (markResult.IsFailure)
             {
                 return Result.Failure<MigrateTenantSchemasResponse>(markResult.Error);
@@ -69,7 +69,7 @@ internal sealed class MigrateTenantSchemasCommandHandler : ICommandHandler<Migra
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         foreach (var result in migrationResult.Value)
         {
-            await _tenantRegistry.InvalidateAsync(result.ClinicId, cancellationToken);
+            await _tenantRegistry.InvalidateAsync(result.TenantId, cancellationToken);
         }
 
         return new MigrateTenantSchemasResponse(
@@ -78,7 +78,7 @@ internal sealed class MigrateTenantSchemasCommandHandler : ICommandHandler<Migra
             _tenantMigrationService.ExpectedMigration,
             migrationResult.Value
                 .Select(r => new TenantMigrationResultResponse(
-                    r.ClinicId,
+                    r.TenantId,
                     r.SchemaName,
                     r.Status,
                     r.PreviousMigration,

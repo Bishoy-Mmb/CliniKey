@@ -65,15 +65,18 @@ public sealed class CrossTenantDentistQueryTests : IAsyncLifetime
         await using (var sharedContext = CreateSharedContext())
         {
             await sharedContext.Database.EnsureCreatedAsync();
-            var clinicId = Guid.NewGuid();
+            var tenantId = Guid.NewGuid();
+            var schemaNameLocal = $"tenant_{tenantId:N}";
+            var tenant = Tenant.Create(tenantId, "Invite Practice", schemaNameLocal, _clock).Value;
             var clinic = Clinic.Create(
-                clinicId,
+                Guid.NewGuid(),
+                tenant.Id,
                 "Invite Clinic",
                 "01111111111",
                 "15 Tahrir St",
-                $"tenant_{clinicId:N}",
                 _clock).Value;
-            schemaName = clinic.SchemaName;
+            schemaName = tenant.SchemaName;
+            sharedContext.Tenants.Add(tenant);
             sharedContext.Clinics.Add(clinic);
             await sharedContext.SaveChangesAsync();
         }
@@ -83,7 +86,8 @@ public sealed class CrossTenantDentistQueryTests : IAsyncLifetime
 
         await using (var tenantContext = CreateAppContext(schemaName))
         {
-            var clinic = await tenantContext.Clinics.SingleAsync(c => c.SchemaName == schemaName);
+            var tenant = await tenantContext.Tenants.SingleAsync(t => t.SchemaName == schemaName);
+            var clinic = await tenantContext.Clinics.SingleAsync(c => c.TenantId == tenant.Id);
             var dentist = Dentist.Create("Dr. Invite Shared", "Orthodontics", "LIC-SHARED-INVITE", _clock).Value;
 
             new DentistRepository(tenantContext).Add(dentist);
@@ -124,7 +128,7 @@ public sealed class CrossTenantDentistQueryTests : IAsyncLifetime
     private AppDbContext CreateAppContext(string schemaName)
     {
         var tenantContext = new TenantContext();
-        tenantContext.Resolve(Guid.NewGuid(), schemaName, ClinicStatus.Active, TenantSchemaHealthStatus.Healthy);
+        tenantContext.Resolve(Guid.NewGuid(), schemaName, TenantStatus.Active, TenantSchemaHealthStatus.Healthy);
 
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(_postgres.GetConnectionString())

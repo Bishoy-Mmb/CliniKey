@@ -11,6 +11,7 @@ namespace CliniKey.Application.Features.Tenants.Commands.DeactivateClinic;
 internal sealed class DeactivateClinicCommandHandler : ICommandHandler<DeactivateClinicCommand>
 {
     private readonly IClinicRepository _clinicRepository;
+    private readonly ITenantRepository _tenantRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly ITenantProvisioningService _tenantProvisioningService;
     private readonly ITenantRegistry _tenantRegistry;
@@ -18,12 +19,14 @@ internal sealed class DeactivateClinicCommandHandler : ICommandHandler<Deactivat
 
     public DeactivateClinicCommandHandler(
         IClinicRepository clinicRepository,
+        ITenantRepository tenantRepository,
         ICurrentUserService currentUserService,
         ITenantProvisioningService tenantProvisioningService,
         ITenantRegistry tenantRegistry,
         IUnitOfWork unitOfWork)
     {
         _clinicRepository = clinicRepository;
+        _tenantRepository = tenantRepository;
         _currentUserService = currentUserService;
         _tenantProvisioningService = tenantProvisioningService;
         _tenantRegistry = tenantRegistry;
@@ -38,17 +41,23 @@ internal sealed class DeactivateClinicCommandHandler : ICommandHandler<Deactivat
             return Result.Failure(ClinicErrors.NotFound);
         }
 
+        var tenant = await _tenantRepository.GetByIdAsync(clinic.TenantId, cancellationToken);
+        if (tenant is null)
+        {
+            return Result.Failure(TenantErrors.NotFound);
+        }
+
         Guid? operatorUserId = _currentUserService.UserId == Guid.Empty ? null : _currentUserService.UserId;
-        var deactivateResult = clinic.Deactivate(operatorUserId);
+        var deactivateResult = tenant.Deactivate(operatorUserId);
         if (deactivateResult.IsFailure)
         {
             return deactivateResult;
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        await _tenantRegistry.InvalidateAsync(clinic.Id, cancellationToken);
+        await _tenantRegistry.InvalidateAsync(tenant.Id, cancellationToken);
         await _tenantProvisioningService.RecordLifecycleAuditAsync(
-            clinic,
+            tenant,
             "Deactivate",
             "Succeeded",
             request.Reason,

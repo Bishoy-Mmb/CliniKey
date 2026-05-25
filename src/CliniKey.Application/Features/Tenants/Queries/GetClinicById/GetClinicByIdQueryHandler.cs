@@ -9,10 +9,12 @@ namespace CliniKey.Application.Features.Tenants.Queries.GetClinicById;
 internal sealed class GetClinicByIdQueryHandler : IQueryHandler<GetClinicByIdQuery, ClinicResponse>
 {
     private readonly IClinicRepository _clinicRepository;
+    private readonly ITenantRepository _tenantRepository;
 
-    public GetClinicByIdQueryHandler(IClinicRepository clinicRepository)
+    public GetClinicByIdQueryHandler(IClinicRepository clinicRepository, ITenantRepository tenantRepository)
     {
         _clinicRepository = clinicRepository;
+        _tenantRepository = tenantRepository;
     }
 
     public async Task<Result<ClinicResponse>> Handle(GetClinicByIdQuery request, CancellationToken cancellationToken)
@@ -23,6 +25,12 @@ internal sealed class GetClinicByIdQueryHandler : IQueryHandler<GetClinicByIdQue
             return Result.Failure<ClinicResponse>(ClinicErrors.NotFound);
         }
 
-        return ClinicResponse.FromClinic(clinic);
+        var tenant = await _tenantRepository.GetByIdAsync(clinic.TenantId, cancellationToken);
+        if (tenant is null)
+        {
+            return Result.Failure<ClinicResponse>(TenantErrors.NotFound);
+        }
+
+        return ClinicResponse.FromTenantAndClinic(tenant, clinic);
     }
 }

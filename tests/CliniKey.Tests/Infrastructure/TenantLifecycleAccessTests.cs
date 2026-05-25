@@ -29,20 +29,26 @@ public sealed class TenantLifecycleAccessTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task TenantRegistry_InactiveClinic_ReturnsInactiveWithoutResolvingSchema()
+    public async Task TenantRegistry_InactiveTenant_ReturnsInactiveWithoutResolvingSchema()
     {
         await using var sharedContext = CreateSharedContext();
         await sharedContext.Database.EnsureCreatedAsync();
-        var clinicId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var tenant = Tenant.Create(
+            tenantId,
+            "Inactive Practice",
+            $"tenant_{tenantId:N}",
+            _clock).Value;
+        tenant.MarkProvisioned("202605230001_InitialTenantOperationalSchema");
+        tenant.Deactivate(Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"));
         var clinic = Clinic.Create(
-            clinicId,
+            Guid.NewGuid(),
+            tenant.Id,
             "Inactive Clinic",
             "01122222222",
             "15 Tahrir St",
-            $"tenant_{clinicId:N}",
             _clock).Value;
-        clinic.MarkProvisioned("202605230001_InitialTenantOperationalSchema");
-        clinic.Deactivate(Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"));
+        sharedContext.Tenants.Add(tenant);
         sharedContext.Clinics.Add(clinic);
         await sharedContext.SaveChangesAsync();
 
@@ -53,10 +59,45 @@ public sealed class TenantLifecycleAccessTests : IAsyncLifetime
             cache,
             Options.Create(new TenancyOptions { TenantRegistryCacheSeconds = 5 }));
 
-        var result = await registry.ResolveAsync(clinic.Id);
+        var result = await registry.ResolveAsync(tenant.Id);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be(TenantErrors.Inactive);
+    }
+
+    [Fact]
+    public async Task TenantRegistry_NotProvisionedTenant_ReturnsNotProvisioned()
+    {
+        await using var sharedContext = CreateSharedContext();
+        await sharedContext.Database.EnsureCreatedAsync();
+        var tenantId = Guid.NewGuid();
+        var tenant = Tenant.Create(
+            tenantId,
+            "Pending Practice",
+            $"tenant_{tenantId:N}",
+            _clock).Value;
+        var clinic = Clinic.Create(
+            Guid.NewGuid(),
+            tenant.Id,
+            "Pending Clinic",
+            "01133333333",
+            "15 Tahrir St",
+            _clock).Value;
+        sharedContext.Tenants.Add(tenant);
+        sharedContext.Clinics.Add(clinic);
+        await sharedContext.SaveChangesAsync();
+
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        await using var dataSource = NpgsqlDataSource.Create(_postgres.GetConnectionString());
+        var registry = new TenantRegistry(
+            dataSource,
+            cache,
+            Options.Create(new TenancyOptions { TenantRegistryCacheSeconds = 5 }));
+
+        var result = await registry.ResolveAsync(tenant.Id);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(TenantErrors.NotProvisioned);
     }
 
     private SharedDbContext CreateSharedContext()

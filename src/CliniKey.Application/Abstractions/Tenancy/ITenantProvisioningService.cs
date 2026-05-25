@@ -6,12 +6,12 @@ namespace CliniKey.Application.Abstractions.Tenancy;
 public interface ITenantProvisioningService
 {
     Task<Result<string?>> ProvisionAsync(
-        Clinic clinic,
+        Tenant tenant,
         Guid? operatorUserId,
         CancellationToken cancellationToken = default);
 
     Task RecordLifecycleAuditAsync(
-        Clinic clinic,
+        Tenant tenant,
         string operation,
         string status,
         string? message,

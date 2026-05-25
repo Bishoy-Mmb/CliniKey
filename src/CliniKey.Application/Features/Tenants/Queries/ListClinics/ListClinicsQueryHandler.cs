@@ -7,30 +7,35 @@ namespace CliniKey.Application.Features.Tenants.Queries.ListClinics;
 
 internal sealed class ListClinicsQueryHandler : IQueryHandler<ListClinicsQuery, ClinicListResponse>
 {
-    private readonly IClinicRepository _clinicRepository;
+    private readonly ITenantRepository _tenantRepository;
 
-    public ListClinicsQueryHandler(IClinicRepository clinicRepository)
+    public ListClinicsQueryHandler(ITenantRepository tenantRepository)
     {
-        _clinicRepository = clinicRepository;
+        _tenantRepository = tenantRepository;
     }
 
     public async Task<Result<ClinicListResponse>> Handle(ListClinicsQuery request, CancellationToken cancellationToken)
     {
         var page = Math.Max(request.Page, 1);
         var pageSize = Math.Clamp(request.PageSize, 1, 100);
-        var clinics = await _clinicRepository.ListAsync(
+        var tenants = await _tenantRepository.ListAsync(
             request.Status,
             request.Health,
-            page,
-            pageSize,
-            cancellationToken);
-        var totalCount = await _clinicRepository.CountAsync(
+            requireClinic: true,
+            page: page,
+            pageSize: pageSize,
+            cancellationToken: cancellationToken);
+        var totalCount = await _tenantRepository.CountAsync(
             request.Status,
             request.Health,
-            cancellationToken);
+            requireClinic: true,
+            cancellationToken: cancellationToken);
 
         return new ClinicListResponse(
-            clinics.Select(ClinicListItemResponse.FromClinic).ToList().AsReadOnly(),
+            tenants
+                .Select(ClinicListItemResponse.FromTenant)
+                .ToList()
+                .AsReadOnly(),
             page,
             pageSize,
             totalCount);

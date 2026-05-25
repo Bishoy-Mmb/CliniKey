@@ -7,7 +7,7 @@ public sealed record MigrateTenantSchemasResponse(
     IReadOnlyList<TenantMigrationResultResponse> Results);
 
 public sealed record TenantMigrationResultResponse(
-    Guid ClinicId,
+    Guid TenantId,
     string SchemaName,
     string Status,
     string? PreviousMigration,

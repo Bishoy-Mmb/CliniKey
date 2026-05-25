@@ -50,6 +50,7 @@ public static class DependencyInjection
         services.AddScoped<IDentistRepository, DentistRepository>();
         services.AddScoped<ITreatmentPlanRepository, TreatmentPlanRepository>();
         services.AddScoped<IInvoiceRepository, InvoiceRepository>();
+        services.AddScoped<ITenantRepository, TenantRepository>();
         services.AddScoped<IClinicRepository, ClinicRepository>();
         
         services.AddScoped<IDbConnectionFactory, DbConnectionFactory>();

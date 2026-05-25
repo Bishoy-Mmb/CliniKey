@@ -61,7 +61,7 @@ public sealed class TenantResolutionMiddleware : IMiddleware
         _tenantContextSetter.Resolve(
             result.Value.TenantId,
             result.Value.SchemaName,
-            result.Value.ClinicStatus,
+            result.Value.TenantStatus,
             result.Value.SchemaHealthStatus);
 
         context.Items["TenantId"] = result.Value.TenantId;

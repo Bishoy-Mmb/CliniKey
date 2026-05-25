@@ -35,7 +35,9 @@ public sealed class TenantProvisioningIntegrationTests : IAsyncLifetime
     {
         await using var sharedContext = CreateSharedDbContext();
         await sharedContext.Database.EnsureCreatedAsync();
-        var clinic = CreateClinic("Cairo Dental Center", "01112345678", "15 Tahrir St");
+        var tenant = CreateTenant("Cairo Dental Center");
+        var clinic = CreateClinic(tenant.Id, "Cairo Dental Center", "01112345678", "15 Tahrir St");
+        sharedContext.Tenants.Add(tenant);
         sharedContext.Clinics.Add(clinic);
         await sharedContext.SaveChangesAsync();
 
@@ -50,12 +52,12 @@ public sealed class TenantProvisioningIntegrationTests : IAsyncLifetime
             tenancyOptions,
             NullLogger<TenantProvisioningService>.Instance);
 
-        var result = await service.ProvisionAsync(clinic, null);
+        var result = await service.ProvisionAsync(tenant, null);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().Be(TenantMigrationService.BaselineMigration);
-        (await SchemaExistsAsync(clinic.SchemaName)).Should().BeTrue();
-        (await MigrationExistsAsync(clinic.SchemaName, TenantMigrationService.BaselineMigration)).Should().BeTrue();
+        (await SchemaExistsAsync(tenant.SchemaName)).Should().BeTrue();
+        (await MigrationExistsAsync(tenant.SchemaName, TenantMigrationService.BaselineMigration)).Should().BeTrue();
     }
 
     [Fact]
@@ -63,7 +65,9 @@ public sealed class TenantProvisioningIntegrationTests : IAsyncLifetime
     {
         await using var sharedContext = CreateSharedDbContext();
         await sharedContext.Database.EnsureCreatedAsync();
-        var clinic = CreateClinic("Alex Dental Center", "01112345679", "10 Sea Rd");
+        var tenant = CreateTenant("Alex Dental Center");
+        var clinic = CreateClinic(tenant.Id, "Alex Dental Center", "01112345679", "10 Sea Rd");
+        sharedContext.Tenants.Add(tenant);
         sharedContext.Clinics.Add(clinic);
         await sharedContext.SaveChangesAsync();
 
@@ -76,10 +80,10 @@ public sealed class TenantProvisioningIntegrationTests : IAsyncLifetime
             CreateTenancyOptions(),
             NullLogger<TenantProvisioningService>.Instance);
 
-        var result = await service.ProvisionAsync(clinic, null);
+        var result = await service.ProvisionAsync(tenant, null);
 
         result.IsFailure.Should().BeTrue();
-        (await SchemaExistsAsync(clinic.SchemaName)).Should().BeFalse();
+        (await SchemaExistsAsync(tenant.SchemaName)).Should().BeFalse();
     }
 
     private SharedDbContext CreateSharedDbContext()
@@ -91,15 +95,20 @@ public sealed class TenantProvisioningIntegrationTests : IAsyncLifetime
         return new SharedDbContext(options);
     }
 
-    private Clinic CreateClinic(string name, string phone, string address)
+    private Tenant CreateTenant(string name)
     {
-        var clinicId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        return Tenant.Create(tenantId, name, $"tenant_{tenantId:N}", _clock).Value;
+    }
+
+    private Clinic CreateClinic(Guid tenantId, string name, string phone, string address)
+    {
         return Clinic.Create(
-            clinicId,
+            Guid.NewGuid(),
+            tenantId,
             name,
             phone,
             address,
-            $"tenant_{clinicId:N}",
             _clock).Value;
     }
 

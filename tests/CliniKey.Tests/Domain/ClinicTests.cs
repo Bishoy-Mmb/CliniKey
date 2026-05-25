@@ -19,21 +19,16 @@ public class ClinicTests
     }
 
     [Fact]
-    public void Create_ValidInput_ReturnsClinicWithPendingProvisioning()
+    public void Create_ValidInput_ReturnsActiveClinicBranch()
     {
         var result = CreateClinicResult();
 
         result.IsSuccess.Should().BeTrue();
+        result.Value.TenantId.Should().NotBe(Guid.Empty);
         result.Value.Name.Should().Be("Cairo Dental Center");
         result.Value.Phone.Value.Should().Be("01112345678");
         result.Value.Address.Should().Be("15 Tahrir St");
-        result.Value.SchemaName.Should().StartWith("tenant_");
-        result.Value.SchemaName.Should().HaveLength(39);
-        result.Value.SchemaName.Should().MatchRegex("^tenant_[0-9a-f]{32}$");
-        Clinic.MaxSchemaNameLength.Should().BeGreaterThanOrEqualTo(result.Value.SchemaName.Length);
         result.Value.Status.Should().Be(ClinicStatus.Active);
-        result.Value.ProvisioningStatus.Should().Be(TenantProvisioningStatus.Pending);
-        result.Value.SchemaHealthStatus.Should().Be(TenantSchemaHealthStatus.Unknown);
         result.Value.CreatedAtUtc.Should().Be(_fixedTime.UtcDateTime);
     }
 
@@ -53,21 +48,6 @@ public class ClinicTests
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be(ClinicErrors.InvalidAddress);
-    }
-
-    [Fact]
-    public void MarkProvisioned_SetsHealthyStateAndRaisesEvent()
-    {
-        var clinic = CreateClinic();
-
-        var result = clinic.MarkProvisioned("202605230001_InitialTenantOperationalSchema");
-
-        result.IsSuccess.Should().BeTrue();
-        clinic.ProvisioningStatus.Should().Be(TenantProvisioningStatus.Provisioned);
-        clinic.SchemaHealthStatus.Should().Be(TenantSchemaHealthStatus.Healthy);
-        clinic.CurrentMigration.Should().Be("202605230001_InitialTenantOperationalSchema");
-        clinic.LastSchemaVerifiedAtUtc.Should().Be(_fixedTime.UtcDateTime);
-        clinic.DomainEvents.Should().ContainSingle(e => e is ClinicProvisionedEvent);
     }
 
     [Fact]
@@ -166,6 +146,7 @@ public class ClinicTests
         string address = "15 Tahrir St")
     {
         var clinicId = Guid.NewGuid();
-        return Clinic.Create(clinicId, name, phone, address, $"tenant_{clinicId:N}", _clock);
+        var tenantId = Guid.NewGuid();
+        return Clinic.Create(clinicId, tenantId, name, phone, address, _clock);
     }
 }

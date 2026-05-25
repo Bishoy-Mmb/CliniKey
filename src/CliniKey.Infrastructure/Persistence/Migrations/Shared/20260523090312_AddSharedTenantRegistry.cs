@@ -15,14 +15,12 @@ namespace CliniKey.Infrastructure.Persistence.Migrations.Shared
                 name: "shared");
 
             migrationBuilder.CreateTable(
-                name: "clinics",
+                name: "tenants",
                 schema: "shared",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    phone = table.Column<string>(type: "character varying(11)", maxLength: 11, nullable: false),
-                    address = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
                     schema_name = table.Column<string>(type: "character varying(63)", maxLength: 63, nullable: false),
                     status = table.Column<string>(type: "text", nullable: false),
                     provisioning_status = table.Column<string>(type: "text", nullable: false),
@@ -36,7 +34,35 @@ namespace CliniKey.Infrastructure.Persistence.Migrations.Shared
                 },
                 constraints: table =>
                 {
+                    table.PrimaryKey("PK_tenants", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "clinics",
+                schema: "shared",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    phone = table.Column<string>(type: "character varying(11)", maxLength: 11, nullable: false),
+                    address = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    status = table.Column<string>(type: "text", nullable: false),
+                    deactivated_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deactivated_by_user_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    created_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
                     table.PrimaryKey("PK_clinics", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_clinics_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalSchema: "shared",
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -62,7 +88,7 @@ namespace CliniKey.Infrastructure.Persistence.Migrations.Shared
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
-                    clinic_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true),
                     schema_name = table.Column<string>(type: "character varying(63)", maxLength: 63, nullable: true),
                     operation = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     status = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
@@ -74,10 +100,10 @@ namespace CliniKey.Infrastructure.Persistence.Migrations.Shared
                 {
                     table.PrimaryKey("PK_tenant_provisioning_audit_logs", x => x.id);
                     table.ForeignKey(
-                        name: "FK_tenant_provisioning_audit_logs_clinics_clinic_id",
-                        column: x => x.clinic_id,
+                        name: "FK_tenant_provisioning_audit_logs_tenants_tenant_id",
+                        column: x => x.tenant_id,
                         principalSchema: "shared",
-                        principalTable: "clinics",
+                        principalTable: "tenants",
                         principalColumn: "id",
                         onDelete: ReferentialAction.SetNull);
                 });
@@ -112,9 +138,15 @@ namespace CliniKey.Infrastructure.Persistence.Migrations.Shared
 
             migrationBuilder.InsertData(
                 schema: "shared",
+                table: "tenants",
+                columns: new[] { "id", "created_at_utc", "current_migration", "deactivated_at_utc", "deactivated_by_user_id", "last_schema_verified_at_utc", "name", "provisioning_status", "schema_health_status", "schema_name", "status", "updated_at_utc" },
+                values: new object[] { new Guid("11111111-1111-1111-1111-111111111111"), new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "SeededDevelopmentTenant", null, null, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "Dev Practice", "Provisioned", "Healthy", "tenant_dev", "Active", null });
+
+            migrationBuilder.InsertData(
+                schema: "shared",
                 table: "clinics",
-                columns: new[] { "id", "address", "created_at_utc", "current_migration", "deactivated_at_utc", "deactivated_by_user_id", "last_schema_verified_at_utc", "name", "phone", "provisioning_status", "schema_health_status", "schema_name", "status", "updated_at_utc" },
-                values: new object[] { new Guid("11111111-1111-1111-1111-111111111111"), "Development tenant", new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "SeededDevelopmentTenant", null, null, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "Dev Clinic", "01000000000", "Provisioned", "Healthy", "tenant_dev", "Active", null });
+                columns: new[] { "id", "address", "created_at_utc", "deactivated_at_utc", "deactivated_by_user_id", "name", "phone", "status", "tenant_id", "updated_at_utc" },
+                values: new object[] { new Guid("11111111-1111-1111-1111-111111111111"), "Development tenant", new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, null, "Dev Clinic", "01000000000", "Active", new Guid("11111111-1111-1111-1111-111111111111"), null });
 
             migrationBuilder.InsertData(
                 schema: "shared",
@@ -149,11 +181,10 @@ namespace CliniKey.Infrastructure.Persistence.Migrations.Shared
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_clinics_schema_name",
+                name: "IX_clinics_tenant_id",
                 schema: "shared",
                 table: "clinics",
-                column: "schema_name",
-                unique: true);
+                column: "tenant_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_dentists_license_number",
@@ -163,10 +194,17 @@ namespace CliniKey.Infrastructure.Persistence.Migrations.Shared
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_tenant_provisioning_audit_logs_clinic_id_operation",
+                name: "IX_tenant_provisioning_audit_logs_tenant_id_operation",
                 schema: "shared",
                 table: "tenant_provisioning_audit_logs",
-                columns: new[] { "clinic_id", "operation" });
+                columns: new[] { "tenant_id", "operation" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_tenants_schema_name",
+                schema: "shared",
+                table: "tenants",
+                column: "schema_name",
+                unique: true);
         }
 
         /// <inheritdoc />
@@ -186,6 +224,10 @@ namespace CliniKey.Infrastructure.Persistence.Migrations.Shared
 
             migrationBuilder.DropTable(
                 name: "clinics",
+                schema: "shared");
+
+            migrationBuilder.DropTable(
+                name: "tenants",
                 schema: "shared");
         }
     }

@@ -38,11 +38,6 @@ namespace CliniKey.Infrastructure.Persistence.Migrations.Shared
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at_utc");
 
-                    b.Property<string>("CurrentMigration")
-                        .HasMaxLength(150)
-                        .HasColumnType("character varying(150)")
-                        .HasColumnName("current_migration");
-
                     b.Property<DateTime?>("DeactivatedAtUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("deactivated_at_utc");
@@ -50,10 +45,6 @@ namespace CliniKey.Infrastructure.Persistence.Migrations.Shared
                     b.Property<Guid?>("DeactivatedByUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("deactivated_by_user_id");
-
-                    b.Property<DateTime?>("LastSchemaVerifiedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_schema_verified_at_utc");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -67,26 +58,14 @@ namespace CliniKey.Infrastructure.Persistence.Migrations.Shared
                         .HasColumnType("character varying(11)")
                         .HasColumnName("phone");
 
-                    b.Property<string>("ProvisioningStatus")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("provisioning_status");
-
-                    b.Property<string>("SchemaHealthStatus")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("schema_health_status");
-
-                    b.Property<string>("SchemaName")
-                        .IsRequired()
-                        .HasMaxLength(63)
-                        .HasColumnType("character varying(63)")
-                        .HasColumnName("schema_name");
-
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
 
                     b.Property<DateTime?>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone")
@@ -97,8 +76,7 @@ namespace CliniKey.Infrastructure.Persistence.Migrations.Shared
                     b.HasIndex("Phone")
                         .IsUnique();
 
-                    b.HasIndex("SchemaName")
-                        .IsUnique();
+                    b.HasIndex("TenantId");
 
                     b.ToTable("clinics", "shared");
 
@@ -108,14 +86,10 @@ namespace CliniKey.Infrastructure.Persistence.Migrations.Shared
                             Id = new Guid("11111111-1111-1111-1111-111111111111"),
                             Address = "Development tenant",
                             CreatedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            CurrentMigration = "SeededDevelopmentTenant",
-                            LastSchemaVerifiedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Name = "Dev Clinic",
                             Phone = "01000000000",
-                            ProvisioningStatus = "Provisioned",
-                            SchemaHealthStatus = "Healthy",
-                            SchemaName = "tenant_dev",
-                            Status = "Active"
+                            Status = "Active",
+                            TenantId = new Guid("11111111-1111-1111-1111-111111111111")
                         });
                 });
 
@@ -201,15 +175,91 @@ namespace CliniKey.Infrastructure.Persistence.Migrations.Shared
                         });
                 });
 
-            modelBuilder.Entity("CliniKey.Domain.Entities.TenantProvisioningAuditLog", b =>
+            modelBuilder.Entity("CliniKey.Domain.Entities.Tenant", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<Guid?>("ClinicId")
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("CurrentMigration")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("current_migration");
+
+                    b.Property<DateTime?>("DeactivatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deactivated_at_utc");
+
+                    b.Property<Guid?>("DeactivatedByUserId")
                         .HasColumnType("uuid")
-                        .HasColumnName("clinic_id");
+                        .HasColumnName("deactivated_by_user_id");
+
+                    b.Property<DateTime?>("LastSchemaVerifiedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_schema_verified_at_utc");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("ProvisioningStatus")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("provisioning_status");
+
+                    b.Property<string>("SchemaHealthStatus")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("schema_health_status");
+
+                    b.Property<string>("SchemaName")
+                        .IsRequired()
+                        .HasMaxLength(63)
+                        .HasColumnType("character varying(63)")
+                        .HasColumnName("schema_name");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SchemaName")
+                        .IsUnique();
+
+                    b.ToTable("tenants", "shared");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("11111111-1111-1111-1111-111111111111"),
+                            CreatedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CurrentMigration = "SeededDevelopmentTenant",
+                            LastSchemaVerifiedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Name = "Dev Practice",
+                            ProvisioningStatus = "Provisioned",
+                            SchemaHealthStatus = "Healthy",
+                            SchemaName = "tenant_dev",
+                            Status = "Active"
+                        });
+                });
+
+            modelBuilder.Entity("CliniKey.Domain.Entities.TenantProvisioningAuditLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<string>("Message")
                         .HasMaxLength(1000)
@@ -241,11 +291,24 @@ namespace CliniKey.Infrastructure.Persistence.Migrations.Shared
                         .HasColumnType("character varying(50)")
                         .HasColumnName("status");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("ClinicId", "Operation");
+                    b.HasIndex("TenantId", "Operation");
 
                     b.ToTable("tenant_provisioning_audit_logs", "shared");
+                });
+
+            modelBuilder.Entity("CliniKey.Domain.Entities.Clinic", b =>
+                {
+                    b.HasOne("CliniKey.Domain.Entities.Tenant", null)
+                        .WithMany("Clinics")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("CliniKey.Domain.Entities.ClinicDentist", b =>
@@ -265,15 +328,20 @@ namespace CliniKey.Infrastructure.Persistence.Migrations.Shared
 
             modelBuilder.Entity("CliniKey.Domain.Entities.TenantProvisioningAuditLog", b =>
                 {
-                    b.HasOne("CliniKey.Domain.Entities.Clinic", null)
+                    b.HasOne("CliniKey.Domain.Entities.Tenant", null)
                         .WithMany()
-                        .HasForeignKey("ClinicId")
+                        .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("CliniKey.Domain.Entities.Clinic", b =>
                 {
                     b.Navigation("ClinicDentists");
+                });
+
+            modelBuilder.Entity("CliniKey.Domain.Entities.Tenant", b =>
+                {
+                    b.Navigation("Clinics");
                 });
 #pragma warning restore 612, 618
         }

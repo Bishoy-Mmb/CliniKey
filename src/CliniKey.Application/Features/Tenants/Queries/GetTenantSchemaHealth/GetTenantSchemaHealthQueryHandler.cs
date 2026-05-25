@@ -7,14 +7,14 @@ namespace CliniKey.Application.Features.Tenants.Queries.GetTenantSchemaHealth;
 
 internal sealed class GetTenantSchemaHealthQueryHandler : IQueryHandler<GetTenantSchemaHealthQuery, TenantSchemaHealthResponse>
 {
-    private readonly IClinicRepository _clinicRepository;
+    private readonly ITenantRepository _tenantRepository;
     private readonly ITenantMigrationService _tenantMigrationService;
 
     public GetTenantSchemaHealthQueryHandler(
-        IClinicRepository clinicRepository,
+        ITenantRepository tenantRepository,
         ITenantMigrationService tenantMigrationService)
     {
-        _clinicRepository = clinicRepository;
+        _tenantRepository = tenantRepository;
         _tenantMigrationService = tenantMigrationService;
     }
 
@@ -22,18 +22,18 @@ internal sealed class GetTenantSchemaHealthQueryHandler : IQueryHandler<GetTenan
         GetTenantSchemaHealthQuery request,
         CancellationToken cancellationToken)
     {
-        var clinics = await _clinicRepository.ListAllAsync(null, null, null, cancellationToken);
+        var tenants = await _tenantRepository.ListAllAsync(null, null, null, cancellationToken);
 
         return new TenantSchemaHealthResponse(
             _tenantMigrationService.ExpectedMigration,
-            clinics
-                .Select(c => new TenantSchemaHealthItemResponse(
-                    c.Id,
-                    c.SchemaName,
-                    c.Status.ToString(),
-                    c.SchemaHealthStatus.ToString(),
-                    c.CurrentMigration,
-                    c.LastSchemaVerifiedAtUtc,
+            tenants
+                .Select(t => new TenantSchemaHealthItemResponse(
+                    t.Id,
+                    t.SchemaName,
+                    t.Status.ToString(),
+                    t.SchemaHealthStatus.ToString(),
+                    t.CurrentMigration,
+                    t.LastSchemaVerifiedAtUtc,
                     null))
                 .ToList()
                 .AsReadOnly());

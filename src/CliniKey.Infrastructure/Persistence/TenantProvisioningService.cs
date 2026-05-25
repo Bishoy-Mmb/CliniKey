@@ -37,7 +37,7 @@ internal sealed class TenantProvisioningService : ITenantProvisioningService
     }
 
     public async Task<Result<string?>> ProvisionAsync(
-        Clinic clinic,
+        Tenant tenant,
         Guid? operatorUserId,
         CancellationToken cancellationToken = default)
     {
@@ -55,44 +55,44 @@ internal sealed class TenantProvisioningService : ITenantProvisioningService
                 $"SELECT pg_advisory_xact_lock({_options.ProvisioningLockKey});",
                 cancellationToken);
 
-            var schema = PostgresIdentifier.QuoteSchema(clinic.SchemaName);
+            var schema = PostgresIdentifier.QuoteSchema(tenant.SchemaName);
             await ExecuteAsync(connection, transaction, $"CREATE SCHEMA IF NOT EXISTS {schema};", cancellationToken);
             await transaction.CommitAsync(cancellationToken);
 
-            await AddAuditLogAsync(clinic, "CreateSchema", "Succeeded", null, operatorUserId, cancellationToken);
+            await AddAuditLogAsync(tenant, "CreateSchema", "Succeeded", null, operatorUserId, cancellationToken);
 
-            var migrationResult = await _tenantMigrationService.ApplyMigrationsAsync(clinic.SchemaName, cancellationToken);
+            var migrationResult = await _tenantMigrationService.ApplyMigrationsAsync(tenant.SchemaName, cancellationToken);
             if (migrationResult.IsFailure)
             {
-                await DropSchemaAsync(clinic.SchemaName, cancellationToken);
-                await AddAuditLogAsync(clinic, "ApplyMigrations", "Failed", migrationResult.Error.Description, operatorUserId, cancellationToken);
+                await DropSchemaAsync(tenant.SchemaName, cancellationToken);
+                await AddAuditLogAsync(tenant, "ApplyMigrations", "Failed", migrationResult.Error.Description, operatorUserId, cancellationToken);
                 return Result.Failure<string?>(TenantErrors.ProvisioningFailed);
             }
 
-            await AddAuditLogAsync(clinic, "ApplyMigrations", "Succeeded", migrationResult.Value, operatorUserId, cancellationToken);
+            await AddAuditLogAsync(tenant, "ApplyMigrations", "Succeeded", migrationResult.Value, operatorUserId, cancellationToken);
             return migrationResult.Value;
         }
         catch (Exception ex) when (ex is NpgsqlException or DbUpdateException or ArgumentException)
         {
-            await DropSchemaAsync(clinic.SchemaName, cancellationToken);
-            await AddAuditLogAsync(clinic, "Onboard", "Failed", ex.Message, operatorUserId, cancellationToken);
+            await DropSchemaAsync(tenant.SchemaName, cancellationToken);
+            await AddAuditLogAsync(tenant, "Onboard", "Failed", ex.Message, operatorUserId, cancellationToken);
             return Result.Failure<string?>(TenantErrors.ProvisioningFailed);
         }
     }
 
     public async Task RecordLifecycleAuditAsync(
-        Clinic clinic,
+        Tenant tenant,
         string operation,
         string status,
         string? message,
         Guid? operatorUserId,
         CancellationToken cancellationToken = default)
     {
-        await AddAuditLogAsync(clinic, operation, status, message, operatorUserId, cancellationToken);
+        await AddAuditLogAsync(tenant, operation, status, message, operatorUserId, cancellationToken);
     }
 
     private async Task AddAuditLogAsync(
-        Clinic clinic,
+        Tenant tenant,
         string operation,
         string status,
         string? message,
@@ -100,8 +100,8 @@ internal sealed class TenantProvisioningService : ITenantProvisioningService
         CancellationToken cancellationToken)
     {
         _sharedDbContext.TenantProvisioningAuditLogs.Add(TenantProvisioningAuditLog.Create(
-            clinic.Id,
-            clinic.SchemaName,
+            tenant.Id,
+            tenant.SchemaName,
             operation,
             status,
             message,

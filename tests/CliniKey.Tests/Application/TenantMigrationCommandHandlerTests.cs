@@ -14,7 +14,7 @@ namespace CliniKey.Tests.Application;
 
 public class TenantMigrationCommandHandlerTests
 {
-    private readonly IClinicRepository _clinicRepository;
+    private readonly ITenantRepository _tenantRepository;
     private readonly ITenantMigrationService _tenantMigrationService;
     private readonly ITenantRegistry _tenantRegistry;
     private readonly IUnitOfWork _unitOfWork;
@@ -22,7 +22,7 @@ public class TenantMigrationCommandHandlerTests
 
     public TenantMigrationCommandHandlerTests()
     {
-        _clinicRepository = Substitute.For<IClinicRepository>();
+        _tenantRepository = Substitute.For<ITenantRepository>();
         _tenantMigrationService = Substitute.For<ITenantMigrationService>();
         _tenantRegistry = Substitute.For<ITenantRegistry>();
         _unitOfWork = Substitute.For<IUnitOfWork>();
@@ -31,21 +31,21 @@ public class TenantMigrationCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_UsesUnpagedFilteredClinicListForMigrationTargets()
+    public async Task Handle_UsesUnpagedFilteredTenantListForMigrationTargets()
     {
-        var clinicIds = Enumerable.Range(0, 101)
+        var tenantIds = Enumerable.Range(0, 101)
             .Select(_ => Guid.NewGuid())
             .ToArray();
-        var clinics = clinicIds
-            .Select((_, index) => CreateClinic($"Clinic {index}"))
+        var tenants = tenantIds
+            .Select((_, index) => CreateTenant($"Practice {index}"))
             .ToList();
-        _clinicRepository
+        _tenantRepository
             .ListAllAsync(
-                ClinicStatus.Active,
+                TenantStatus.Active,
                 null,
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 101),
                 Arg.Any<CancellationToken>())
-            .Returns(clinics);
+            .Returns(tenants);
         _tenantMigrationService
             .ApplyPendingMigrationsAsync(Arg.Any<IReadOnlyCollection<TenantMigrationTarget>>(), Arg.Any<CancellationToken>())
             .Returns(call =>
@@ -54,7 +54,7 @@ public class TenantMigrationCommandHandlerTests
                 return Result.Success<IReadOnlyList<TenantMigrationResult>>(
                     targets
                         .Select(t => new TenantMigrationResult(
-                            t.ClinicId,
+                            t.TenantId,
                             t.SchemaName,
                             "Succeeded",
                             null,
@@ -64,58 +64,64 @@ public class TenantMigrationCommandHandlerTests
                         .AsReadOnly());
             });
         var handler = new MigrateTenantSchemasCommandHandler(
-            _clinicRepository,
+            _tenantRepository,
             _tenantMigrationService,
             _tenantRegistry,
             _unitOfWork,
             _clock);
 
         var result = await handler.Handle(
-            new MigrateTenantSchemasCommand(false, clinicIds),
+            new MigrateTenantSchemasCommand(false, tenantIds),
             CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Results.Should().HaveCount(101);
         await _tenantRegistry.Received(101).InvalidateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        await _clinicRepository.Received(1)
+        await _tenantRepository.Received(1)
             .ListAllAsync(
-                ClinicStatus.Active,
+                TenantStatus.Active,
                 null,
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 101),
                 Arg.Any<CancellationToken>());
-        await _clinicRepository.DidNotReceive()
-            .ListAsync(Arg.Any<ClinicStatus?>(), Arg.Any<TenantSchemaHealthStatus?>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await _tenantRepository.DidNotReceive()
+            .ListAsync(
+                Arg.Any<TenantStatus?>(),
+                Arg.Any<TenantSchemaHealthStatus?>(),
+                Arg.Any<bool>(),
+                Arg.Any<int>(),
+                Arg.Any<int>(),
+                Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task Handle_WhenAnyTenantMigrationFails_MarksUnhealthyInvalidatesCacheAndReturnsPartialResults()
     {
-        var successfulClinic = CreateClinic("Successful Clinic");
-        var failedClinic = CreateClinic("Failed Clinic");
-        _clinicRepository
-            .ListAllAsync(ClinicStatus.Active, null, null, Arg.Any<CancellationToken>())
-            .Returns([successfulClinic, failedClinic]);
+        var successfulTenant = CreateTenant("Successful Practice");
+        var failedTenant = CreateTenant("Failed Practice");
+        _tenantRepository
+            .ListAllAsync(TenantStatus.Active, null, null, Arg.Any<CancellationToken>())
+            .Returns([successfulTenant, failedTenant]);
         _tenantMigrationService
             .ApplyPendingMigrationsAsync(Arg.Any<IReadOnlyCollection<TenantMigrationTarget>>(), Arg.Any<CancellationToken>())
             .Returns(Result.Success<IReadOnlyList<TenantMigrationResult>>(
                 [
                     new TenantMigrationResult(
-                        successfulClinic.Id,
-                        successfulClinic.SchemaName,
+                        successfulTenant.Id,
+                        successfulTenant.SchemaName,
                         "Succeeded",
-                        successfulClinic.CurrentMigration,
+                        successfulTenant.CurrentMigration,
                         "202605230001_InitialTenantOperationalSchema",
                         null),
                     new TenantMigrationResult(
-                        failedClinic.Id,
-                        failedClinic.SchemaName,
+                        failedTenant.Id,
+                        failedTenant.SchemaName,
                         "Failed",
-                        failedClinic.CurrentMigration,
+                        failedTenant.CurrentMigration,
                         null,
                         "Migration failed")
                 ]));
         var handler = new MigrateTenantSchemasCommandHandler(
-            _clinicRepository,
+            _tenantRepository,
             _tenantMigrationService,
             _tenantRegistry,
             _unitOfWork,
@@ -125,28 +131,26 @@ public class TenantMigrationCommandHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Results.Should().ContainSingle(r =>
-            r.ClinicId == failedClinic.Id
+            r.TenantId == failedTenant.Id
             && r.Status == "Failed"
             && r.Message == "Migration failed");
-        successfulClinic.SchemaHealthStatus.Should().Be(TenantSchemaHealthStatus.Healthy);
-        failedClinic.SchemaHealthStatus.Should().Be(TenantSchemaHealthStatus.Unhealthy);
+        successfulTenant.SchemaHealthStatus.Should().Be(TenantSchemaHealthStatus.Healthy);
+        failedTenant.SchemaHealthStatus.Should().Be(TenantSchemaHealthStatus.Unhealthy);
         await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
-        await _tenantRegistry.Received(1).InvalidateAsync(successfulClinic.Id, Arg.Any<CancellationToken>());
-        await _tenantRegistry.Received(1).InvalidateAsync(failedClinic.Id, Arg.Any<CancellationToken>());
+        await _tenantRegistry.Received(1).InvalidateAsync(successfulTenant.Id, Arg.Any<CancellationToken>());
+        await _tenantRegistry.Received(1).InvalidateAsync(failedTenant.Id, Arg.Any<CancellationToken>());
     }
 
-    private Clinic CreateClinic(string name)
+    private Tenant CreateTenant(string name)
     {
-        var clinicId = Guid.NewGuid();
-        var clinic = Clinic.Create(
-            clinicId,
+        var tenantId = Guid.NewGuid();
+        var tenant = Tenant.Create(
+            tenantId,
             name,
-            "01112345678",
-            "15 Tahrir St",
-            $"tenant_{clinicId:N}",
+            $"tenant_{tenantId:N}",
             _clock).Value;
-        clinic.MarkProvisioned("202605180001_PreviousMigration");
-        clinic.ClearDomainEvents();
-        return clinic;
+        tenant.MarkProvisioned("202605180001_PreviousMigration");
+        tenant.ClearDomainEvents();
+        return tenant;
     }
 }

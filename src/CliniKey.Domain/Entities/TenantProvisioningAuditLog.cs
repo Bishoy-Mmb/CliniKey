@@ -9,7 +9,7 @@ public sealed class TenantProvisioningAuditLog : Entity<Guid>
     public const int MaxStatusLength = 50;
     public const int MaxMessageLength = 1000;
 
-    public Guid? ClinicId { get; private set; }
+    public Guid? TenantId { get; private set; }
     public string? SchemaName { get; private set; }
     public string Operation { get; private set; }
     public string Status { get; private set; }
@@ -19,7 +19,7 @@ public sealed class TenantProvisioningAuditLog : Entity<Guid>
 
     private TenantProvisioningAuditLog(
         Guid id,
-        Guid? clinicId,
+        Guid? tenantId,
         string? schemaName,
         string operation,
         string status,
@@ -28,7 +28,7 @@ public sealed class TenantProvisioningAuditLog : Entity<Guid>
         DateTime occurredAtUtc)
     {
         Id = id;
-        ClinicId = clinicId;
+        TenantId = tenantId;
         SchemaName = schemaName;
         Operation = operation;
         Status = status;
@@ -44,7 +44,7 @@ public sealed class TenantProvisioningAuditLog : Entity<Guid>
     }
 
     public static TenantProvisioningAuditLog Create(
-        Guid? clinicId,
+        Guid? tenantId,
         string? schemaName,
         string operation,
         string status,
@@ -54,7 +54,7 @@ public sealed class TenantProvisioningAuditLog : Entity<Guid>
     {
         return new TenantProvisioningAuditLog(
             Guid.NewGuid(),
-            clinicId,
+            tenantId,
             schemaName,
             operation,
             status,

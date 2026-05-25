@@ -31,7 +31,7 @@ public sealed class TenantDapperConnectionTests : IAsyncLifetime
         var migrationService = new TenantMigrationService(dataSource, tenancyOptions);
         (await migrationService.ApplyMigrationsAsync(schemaName)).IsSuccess.Should().BeTrue();
         var tenantContext = new TenantContext();
-        tenantContext.Resolve(Guid.NewGuid(), schemaName, ClinicStatus.Active, TenantSchemaHealthStatus.Healthy);
+        tenantContext.Resolve(Guid.NewGuid(), schemaName, TenantStatus.Active, TenantSchemaHealthStatus.Healthy);
         var factory = new DbConnectionFactory(dataSource, tenantContext, tenancyOptions);
 
         using var connection = factory.CreateTenantConnection();

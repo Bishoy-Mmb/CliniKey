@@ -12,6 +12,7 @@ namespace CliniKey.Application.Features.Tenants.Commands.ActivateClinic;
 internal sealed class ActivateClinicCommandHandler : ICommandHandler<ActivateClinicCommand>
 {
     private readonly IClinicRepository _clinicRepository;
+    private readonly ITenantRepository _tenantRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly ITenantProvisioningService _tenantProvisioningService;
     private readonly ITenantRegistry _tenantRegistry;
@@ -19,12 +20,14 @@ internal sealed class ActivateClinicCommandHandler : ICommandHandler<ActivateCli
 
     public ActivateClinicCommandHandler(
         IClinicRepository clinicRepository,
+        ITenantRepository tenantRepository,
         ICurrentUserService currentUserService,
         ITenantProvisioningService tenantProvisioningService,
         ITenantRegistry tenantRegistry,
         IUnitOfWork unitOfWork)
     {
         _clinicRepository = clinicRepository;
+        _tenantRepository = tenantRepository;
         _currentUserService = currentUserService;
         _tenantProvisioningService = tenantProvisioningService;
         _tenantRegistry = tenantRegistry;
@@ -39,12 +42,18 @@ internal sealed class ActivateClinicCommandHandler : ICommandHandler<ActivateCli
             return Result.Failure(ClinicErrors.NotFound);
         }
 
-        if (clinic.SchemaHealthStatus != TenantSchemaHealthStatus.Healthy)
+        var tenant = await _tenantRepository.GetByIdAsync(clinic.TenantId, cancellationToken);
+        if (tenant is null)
+        {
+            return Result.Failure(TenantErrors.NotFound);
+        }
+
+        if (tenant.SchemaHealthStatus != TenantSchemaHealthStatus.Healthy)
         {
             return Result.Failure(TenantErrors.SchemaUnhealthy);
         }
 
-        var activateResult = clinic.Activate();
+        var activateResult = tenant.Activate();
         if (activateResult.IsFailure)
         {
             return activateResult;
@@ -52,9 +61,9 @@ internal sealed class ActivateClinicCommandHandler : ICommandHandler<ActivateCli
 
         Guid? operatorUserId = _currentUserService.UserId == Guid.Empty ? null : _currentUserService.UserId;
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        await _tenantRegistry.InvalidateAsync(clinic.Id, cancellationToken);
+        await _tenantRegistry.InvalidateAsync(tenant.Id, cancellationToken);
         await _tenantProvisioningService.RecordLifecycleAuditAsync(
-            clinic,
+            tenant,
             "Activate",
             "Succeeded",
             null,

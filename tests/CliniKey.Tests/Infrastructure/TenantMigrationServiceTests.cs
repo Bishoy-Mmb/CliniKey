@@ -28,14 +28,14 @@ public sealed class TenantMigrationServiceTests : IAsyncLifetime
     public async Task ApplyPendingMigrationsAsync_NewSchema_CreatesBaselineAndReportsDrift()
     {
         var service = CreateService();
-        var clinicId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
 
         var result = await service.ApplyPendingMigrationsAsync(
-            [new TenantMigrationTarget(clinicId, "tenant_migration_success", IncludeInactive: true)]);
+            [new TenantMigrationTarget(tenantId, "tenant_migration_success", IncludeInactive: true)]);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().ContainSingle();
-        result.Value[0].ClinicId.Should().Be(clinicId);
+        result.Value[0].TenantId.Should().Be(tenantId);
         result.Value[0].Status.Should().Be("Succeeded");
         result.Value[0].PreviousMigration.Should().BeNull();
         result.Value[0].CurrentMigration.Should().Be(TenantMigrationService.BaselineMigration);

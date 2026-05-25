@@ -6,7 +6,7 @@ public interface ITenantContext
 {
     Guid? TenantId { get; }
     string? SchemaName { get; }
-    ClinicStatus? ClinicStatus { get; }
+    TenantStatus? TenantStatus { get; }
     TenantSchemaHealthStatus? SchemaHealthStatus { get; }
     bool IsResolved { get; }
 }
@@ -16,7 +16,7 @@ public interface ITenantContextSetter
     void Resolve(
         Guid tenantId,
         string schemaName,
-        ClinicStatus clinicStatus,
+        TenantStatus tenantStatus,
         TenantSchemaHealthStatus schemaHealthStatus);
 
     void Clear();

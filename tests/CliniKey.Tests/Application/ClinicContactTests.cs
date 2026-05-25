@@ -16,12 +16,14 @@ namespace CliniKey.Tests.Application;
 public class ClinicContactTests
 {
     private readonly IClinicRepository _clinicRepository;
+    private readonly ITenantRepository _tenantRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly FakeTimeProvider _clock;
 
     public ClinicContactTests()
     {
         _clinicRepository = Substitute.For<IClinicRepository>();
+        _tenantRepository = Substitute.For<ITenantRepository>();
         _unitOfWork = Substitute.For<IUnitOfWork>();
         _clock = new FakeTimeProvider(new DateTimeOffset(2026, 5, 23, 10, 0, 0, TimeSpan.Zero));
     }
@@ -30,8 +32,10 @@ public class ClinicContactTests
     public async Task GetClinicById_ExistingClinic_ReturnsDetails()
     {
         var clinic = CreateClinic("Cairo Dental Center", "01112345678");
+        var tenant = CreateTenant(clinic.TenantId);
         _clinicRepository.GetByIdAsync(clinic.Id, Arg.Any<CancellationToken>()).Returns(clinic);
-        var handler = new GetClinicByIdQueryHandler(_clinicRepository);
+        _tenantRepository.GetByIdAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
+        var handler = new GetClinicByIdQueryHandler(_clinicRepository, _tenantRepository);
 
         var result = await handler.Handle(new GetClinicByIdQuery(clinic.Id), CancellationToken.None);
 
@@ -45,16 +49,17 @@ public class ClinicContactTests
     public async Task ListClinics_ReturnsPagedClinicsAndTotalCount()
     {
         var clinic = CreateClinic("Cairo Dental Center", "01112345678");
-        _clinicRepository
-            .ListAsync(ClinicStatus.Active, TenantSchemaHealthStatus.Healthy, 1, 50, Arg.Any<CancellationToken>())
-            .Returns([clinic]);
-        _clinicRepository
-            .CountAsync(ClinicStatus.Active, TenantSchemaHealthStatus.Healthy, Arg.Any<CancellationToken>())
+        var tenant = CreateTenant(clinic.TenantId, [clinic]);
+        _tenantRepository
+            .ListAsync(TenantStatus.Active, TenantSchemaHealthStatus.Healthy, true, 1, 50, Arg.Any<CancellationToken>())
+            .Returns([tenant]);
+        _tenantRepository
+            .CountAsync(TenantStatus.Active, TenantSchemaHealthStatus.Healthy, true, Arg.Any<CancellationToken>())
             .Returns(1);
-        var handler = new ListClinicsQueryHandler(_clinicRepository);
+        var handler = new ListClinicsQueryHandler(_tenantRepository);
 
         var result = await handler.Handle(
-            new ListClinicsQuery(ClinicStatus.Active, TenantSchemaHealthStatus.Healthy),
+            new ListClinicsQuery(TenantStatus.Active, TenantSchemaHealthStatus.Healthy),
             CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -106,13 +111,28 @@ public class ClinicContactTests
         var clinicId = Guid.NewGuid();
         var clinic = Clinic.Create(
             clinicId,
+            Guid.NewGuid(),
             name,
             phone,
             "15 Tahrir St",
-            $"tenant_{clinicId:N}",
             _clock).Value;
-        clinic.MarkProvisioned("202605230001_InitialTenantOperationalSchema");
         clinic.ClearDomainEvents();
         return clinic;
+    }
+
+    private Tenant CreateTenant(Guid tenantId, IReadOnlyCollection<Clinic>? clinics = null)
+    {
+        var tenant = Tenant.Create(tenantId, "Cairo Dental Center", $"tenant_{tenantId:N}", _clock).Value;
+        tenant.MarkProvisioned("202605230001_InitialTenantOperationalSchema");
+
+        if (clinics is not null)
+        {
+            foreach (var clinic in clinics)
+            {
+                tenant.AddClinic(clinic);
+            }
+        }
+
+        return tenant;
     }
 }

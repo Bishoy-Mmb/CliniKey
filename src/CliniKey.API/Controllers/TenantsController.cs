@@ -46,7 +46,7 @@ public sealed class TenantsController : ControllerBase
 
     [HttpGet]
     public async Task<IActionResult> ListClinics(
-        [FromQuery] ClinicStatus? status,
+        [FromQuery] TenantStatus? status,
         [FromQuery] TenantSchemaHealthStatus? health,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50,

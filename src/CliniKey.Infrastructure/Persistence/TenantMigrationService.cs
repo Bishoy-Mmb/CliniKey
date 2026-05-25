@@ -192,7 +192,7 @@ internal sealed class TenantMigrationService : ITenantMigrationService
                 ? await GetCurrentMigrationAsync(target.SchemaName, cancellationToken)
                 : null;
             results.Add(new TenantMigrationResult(
-                target.ClinicId,
+                target.TenantId,
                 target.SchemaName,
                 result.IsSuccess ? "Succeeded" : "Failed",
                 previousMigration,

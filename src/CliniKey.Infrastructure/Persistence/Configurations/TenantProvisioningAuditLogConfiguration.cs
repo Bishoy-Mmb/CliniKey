@@ -23,8 +23,8 @@ internal sealed class TenantProvisioningAuditLogConfiguration : IEntityTypeConfi
             .HasColumnName("id")
             .ValueGeneratedNever();
 
-        builder.Property(log => log.ClinicId)
-            .HasColumnName("clinic_id");
+        builder.Property(log => log.TenantId)
+            .HasColumnName("tenant_id");
 
         builder.Property(log => log.SchemaName)
             .HasColumnName("schema_name")
@@ -51,11 +51,11 @@ internal sealed class TenantProvisioningAuditLogConfiguration : IEntityTypeConfi
             .HasColumnName("occurred_at_utc")
             .IsRequired();
 
-        builder.HasIndex(log => new { log.ClinicId, log.Operation });
+        builder.HasIndex(log => new { log.TenantId, log.Operation });
 
-        builder.HasOne<Clinic>()
+        builder.HasOne<Tenant>()
             .WithMany()
-            .HasForeignKey(log => log.ClinicId)
+            .HasForeignKey(log => log.TenantId)
             .OnDelete(DeleteBehavior.SetNull);
     }
 }

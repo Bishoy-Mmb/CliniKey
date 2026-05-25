@@ -13,6 +13,7 @@ namespace CliniKey.Application.Features.Tenants.Commands.OnboardClinic;
 internal sealed class OnboardClinicCommandHandler : ICommandHandler<OnboardClinicCommand, OnboardClinicResponse>
 {
     private readonly IClinicRepository _clinicRepository;
+    private readonly ITenantRepository _tenantRepository;
     private readonly ITenantProvisioningService _tenantProvisioningService;
     private readonly ICurrentUserService _currentUserService;
     private readonly ITenantSchemaNameGenerator _tenantSchemaNameGenerator;
@@ -21,6 +22,7 @@ internal sealed class OnboardClinicCommandHandler : ICommandHandler<OnboardClini
 
     public OnboardClinicCommandHandler(
         IClinicRepository clinicRepository,
+        ITenantRepository tenantRepository,
         ITenantProvisioningService tenantProvisioningService,
         ICurrentUserService currentUserService,
         ITenantSchemaNameGenerator tenantSchemaNameGenerator,
@@ -28,6 +30,7 @@ internal sealed class OnboardClinicCommandHandler : ICommandHandler<OnboardClini
         TimeProvider clock)
     {
         _clinicRepository = clinicRepository;
+        _tenantRepository = tenantRepository;
         _tenantProvisioningService = tenantProvisioningService;
         _currentUserService = currentUserService;
         _tenantSchemaNameGenerator = tenantSchemaNameGenerator;
@@ -50,37 +53,47 @@ internal sealed class OnboardClinicCommandHandler : ICommandHandler<OnboardClini
             return Result.Failure<OnboardClinicResponse>(TenantErrors.DuplicatePhone);
         }
 
+        var tenantId = Guid.NewGuid();
         var clinicId = Guid.NewGuid();
-        var schemaName = _tenantSchemaNameGenerator.Generate(clinicId);
-        var clinicResult = Clinic.Create(clinicId, request.Name, request.Phone, request.Address, schemaName, _clock);
+        var schemaName = _tenantSchemaNameGenerator.Generate(tenantId);
+        var tenantResult = Tenant.Create(tenantId, request.Name, schemaName, _clock);
+        if (tenantResult.IsFailure)
+        {
+            return Result.Failure<OnboardClinicResponse>(tenantResult.Error);
+        }
+
+        var clinicResult = Clinic.Create(clinicId, tenantId, request.Name, request.Phone, request.Address, _clock);
         if (clinicResult.IsFailure)
         {
             return Result.Failure<OnboardClinicResponse>(clinicResult.Error);
         }
 
+        var tenant = tenantResult.Value;
         var clinic = clinicResult.Value;
-        clinic.MarkProvisioning();
+        tenant.MarkProvisioning();
+        _tenantRepository.Add(tenant);
         _clinicRepository.Add(clinic);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         Guid? operatorUserId = _currentUserService.UserId == Guid.Empty ? null : _currentUserService.UserId;
         var provisioningResult = await _tenantProvisioningService.ProvisionAsync(
-            clinic,
+            tenant,
             operatorUserId,
             cancellationToken);
 
         if (provisioningResult.IsFailure)
         {
-            // Best-effort rollback - if this SaveChangesAsync fails, the clinic
+            // Best-effort rollback - if this SaveChangesAsync fails, the tenant
             // record remains in Provisioning status with no corresponding schema.
             // A background health-check job must detect and clean up stale
-            // Provisioning records (clinics stuck in Provisioning > 10 minutes).
+            // Provisioning records (tenants stuck in Provisioning > 10 minutes).
             _clinicRepository.Remove(clinic);
+            _tenantRepository.Remove(tenant);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             return Result.Failure<OnboardClinicResponse>(provisioningResult.Error);
         }
 
-        var provisionedResult = clinic.MarkProvisioned(provisioningResult.Value);
+        var provisionedResult = tenant.MarkProvisioned(provisioningResult.Value);
         if (provisionedResult.IsFailure)
         {
             return Result.Failure<OnboardClinicResponse>(provisionedResult.Error);
@@ -88,6 +101,6 @@ internal sealed class OnboardClinicCommandHandler : ICommandHandler<OnboardClini
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return OnboardClinicResponse.FromClinic(clinic);
+        return OnboardClinicResponse.FromTenantAndClinic(tenant, clinic);
     }
 }

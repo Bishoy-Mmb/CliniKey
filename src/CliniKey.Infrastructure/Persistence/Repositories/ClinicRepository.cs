@@ -20,19 +20,20 @@ internal sealed class ClinicRepository : IClinicRepository
         return await _context.Set<Clinic>().FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
     }
 
-    public async Task<Clinic?> GetBySchemaNameAsync(string schemaName, CancellationToken cancellationToken = default)
+    public async Task<Clinic?> GetPrimaryByTenantIdAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
-        return await _context.Set<Clinic>().FirstOrDefaultAsync(x => x.SchemaName == schemaName, cancellationToken);
+        return await _context.Set<Clinic>()
+            .OrderBy(c => c.CreatedAtUtc)
+            .FirstOrDefaultAsync(c => c.TenantId == tenantId, cancellationToken);
     }
 
     public async Task<IReadOnlyList<Clinic>> ListAsync(
         ClinicStatus? status = null,
-        TenantSchemaHealthStatus? schemaHealthStatus = null,
         int page = 1,
         int pageSize = 50,
         CancellationToken cancellationToken = default)
     {
-        return await ApplyFilters(status, schemaHealthStatus)
+        return await ApplyFilters(status)
             .OrderBy(c => c.Name)
             .Skip((Math.Max(page, 1) - 1) * Math.Clamp(pageSize, 1, 100))
             .Take(Math.Clamp(pageSize, 1, 100))
@@ -41,11 +42,10 @@ internal sealed class ClinicRepository : IClinicRepository
 
     public async Task<IReadOnlyList<Clinic>> ListAllAsync(
         ClinicStatus? status = null,
-        TenantSchemaHealthStatus? schemaHealthStatus = null,
         IReadOnlyCollection<Guid>? clinicIds = null,
         CancellationToken cancellationToken = default)
     {
-        var query = ApplyFilters(status, schemaHealthStatus);
+        var query = ApplyFilters(status);
 
         if (clinicIds is not null)
         {
@@ -59,10 +59,9 @@ internal sealed class ClinicRepository : IClinicRepository
 
     public async Task<int> CountAsync(
         ClinicStatus? status = null,
-        TenantSchemaHealthStatus? schemaHealthStatus = null,
         CancellationToken cancellationToken = default)
     {
-        return await ApplyFilters(status, schemaHealthStatus).CountAsync(cancellationToken);
+        return await ApplyFilters(status).CountAsync(cancellationToken);
     }
 
     public async Task<bool> ExistsByPhoneAsync(
@@ -84,18 +83,13 @@ internal sealed class ClinicRepository : IClinicRepository
         _context.Set<Clinic>().Remove(clinic);
     }
 
-    private IQueryable<Clinic> ApplyFilters(ClinicStatus? status, TenantSchemaHealthStatus? schemaHealthStatus)
+    private IQueryable<Clinic> ApplyFilters(ClinicStatus? status)
     {
         var query = _context.Set<Clinic>().AsQueryable();
 
         if (status.HasValue)
         {
             query = query.Where(c => c.Status == status.Value);
-        }
-
-        if (schemaHealthStatus.HasValue)
-        {
-            query = query.Where(c => c.SchemaHealthStatus == schemaHealthStatus.Value);
         }
 
         return query;

@@ -36,32 +36,34 @@ internal sealed class TenantRegistry : ITenantRegistry
 
         var sharedSchema = PostgresIdentifier.QuoteSchema(_options.SharedSchema);
         await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
-        var clinic = await connection.QueryFirstOrDefaultAsync<TenantRegistryRow>(
+        var tenant = await connection.QueryFirstOrDefaultAsync<TenantRegistryRow>(
             new CommandDefinition(
                 $"""
                 SELECT
                     id AS TenantId,
                     schema_name AS SchemaName,
-                    status AS ClinicStatus,
+                    status AS TenantStatus,
+                    provisioning_status AS ProvisioningStatus,
                     schema_health_status AS SchemaHealthStatus,
                     current_migration AS CurrentMigration
-                FROM {sharedSchema}.clinics
+                FROM {sharedSchema}.tenants
                 WHERE id = @TenantId
                 """,
                 new { TenantId = tenantId },
                 cancellationToken: cancellationToken));
 
-        if (clinic is null)
+        if (tenant is null)
         {
             return Result.Failure<TenantRegistryEntry>(TenantErrors.NotFound);
         }
 
         var entry = new TenantRegistryEntry(
-            clinic.TenantId,
-            clinic.SchemaName,
-            Enum.Parse<ClinicStatus>(clinic.ClinicStatus),
-            Enum.Parse<TenantSchemaHealthStatus>(clinic.SchemaHealthStatus),
-            clinic.CurrentMigration);
+            tenant.TenantId,
+            tenant.SchemaName,
+            Enum.Parse<TenantStatus>(tenant.TenantStatus),
+            Enum.Parse<TenantProvisioningStatus>(tenant.ProvisioningStatus),
+            Enum.Parse<TenantSchemaHealthStatus>(tenant.SchemaHealthStatus),
+            tenant.CurrentMigration);
 
         _cache.Set(
             cacheKey,
@@ -79,9 +81,14 @@ internal sealed class TenantRegistry : ITenantRegistry
 
     private static Result<TenantRegistryEntry> Validate(TenantRegistryEntry entry)
     {
-        if (entry.ClinicStatus != ClinicStatus.Active)
+        if (entry.TenantStatus != TenantStatus.Active)
         {
             return Result.Failure<TenantRegistryEntry>(TenantErrors.Inactive);
+        }
+
+        if (entry.ProvisioningStatus != TenantProvisioningStatus.Provisioned)
+        {
+            return Result.Failure<TenantRegistryEntry>(TenantErrors.NotProvisioned);
         }
 
         if (entry.SchemaHealthStatus != TenantSchemaHealthStatus.Healthy)
@@ -97,7 +104,8 @@ internal sealed class TenantRegistry : ITenantRegistry
     private sealed record TenantRegistryRow(
         Guid TenantId,
         string SchemaName,
-        string ClinicStatus,
+        string TenantStatus,
+        string ProvisioningStatus,
         string SchemaHealthStatus,
         string? CurrentMigration);
 }

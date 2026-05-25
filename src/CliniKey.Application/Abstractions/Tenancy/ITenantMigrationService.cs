@@ -2,10 +2,10 @@ using CliniKey.SharedKernel.Primitives;
 
 namespace CliniKey.Application.Abstractions.Tenancy;
 
-public sealed record TenantMigrationTarget(Guid ClinicId, string SchemaName, bool IncludeInactive);
+public sealed record TenantMigrationTarget(Guid TenantId, string SchemaName, bool IncludeInactive);
 
 public sealed record TenantMigrationResult(
-    Guid ClinicId,
+    Guid TenantId,
     string SchemaName,
     string Status,
     string? PreviousMigration,

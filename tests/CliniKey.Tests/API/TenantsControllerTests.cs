@@ -42,7 +42,7 @@ public class TenantsControllerTests
     public async Task ListClinics_ReturnsOkWithPagedClinics()
     {
         var response = new ClinicListResponse(
-            [new ClinicListItemResponse(Guid.NewGuid(), "Cairo Dental Center", "01112345678", "15 Tahrir St", "tenant_ab12cd34", "Active", "Provisioned", "Healthy", null)],
+            [new ClinicListItemResponse(Guid.NewGuid(), Guid.NewGuid(), "Cairo Dental Center", "01112345678", "15 Tahrir St", "tenant_ab12cd34", "Active", "Active", "Provisioned", "Healthy", null)],
             1,
             50,
             1);
@@ -79,15 +79,19 @@ public class TenantsControllerTests
     private static ClinicResponse CreateClinicResponse(Guid clinicId)
     {
         return new ClinicResponse(
+            Guid.NewGuid(),
             clinicId,
             "Cairo Dental Center",
             "01112345678",
             "15 Tahrir St",
             "tenant_ab12cd34",
             "Active",
+            "Active",
             "Provisioned",
             "Healthy",
             "202605230001_InitialTenantOperationalSchema",
+            null,
+            null,
             null,
             null,
             null,

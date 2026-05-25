@@ -28,6 +28,7 @@ public sealed class SharedDbContext : DbContext
     }
 
     public DbSet<Clinic> Clinics { get; set; } = null!;
+    public DbSet<Tenant> Tenants { get; set; } = null!;
     public DbSet<Dentist> Dentists { get; set; } = null!;
     public DbSet<ClinicDentist> ClinicDentists { get; set; } = null!;
     public DbSet<TenantProvisioningAuditLog> TenantProvisioningAuditLogs { get; set; } = null!;
@@ -40,26 +41,39 @@ public sealed class SharedDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.ApplyConfiguration(new Configurations.TenantConfiguration(_sharedSchema));
         modelBuilder.ApplyConfiguration(new Configurations.ClinicConfiguration(_sharedSchema));
         modelBuilder.ApplyConfiguration(new Configurations.DentistConfiguration(_sharedSchema));
         modelBuilder.ApplyConfiguration(new Configurations.ClinicDentistConfiguration(_sharedSchema));
         modelBuilder.ApplyConfiguration(new Configurations.TenantProvisioningAuditLogConfiguration(_sharedSchema));
 
         var clinicId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var tenantId = Guid.Parse("11111111-1111-1111-1111-111111111111");
         var dentistId = Guid.Parse("22222222-2222-2222-2222-222222222222");
 
-        modelBuilder.Entity<Clinic>().HasData(new
+        modelBuilder.Entity<Tenant>().HasData(new
         {
-            Id = clinicId,
-            Name = "Dev Clinic",
-            Phone = PhoneNumber.Create("01000000000").Value,
-            Address = "Development tenant",
+            Id = tenantId,
+            Name = "Dev Practice",
             SchemaName = $"{_tenantSchemaPrefix}dev",
-            Status = ClinicStatus.Active,
+            Status = TenantStatus.Active,
             ProvisioningStatus = TenantProvisioningStatus.Provisioned,
             SchemaHealthStatus = TenantSchemaHealthStatus.Healthy,
             CurrentMigration = "SeededDevelopmentTenant",
             LastSchemaVerifiedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            DeactivatedAtUtc = (DateTime?)null,
+            DeactivatedByUserId = (Guid?)null,
+            CreatedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+        });
+
+        modelBuilder.Entity<Clinic>().HasData(new
+        {
+            Id = clinicId,
+            TenantId = tenantId,
+            Name = "Dev Clinic",
+            Phone = PhoneNumber.Create("01000000000").Value,
+            Address = "Development tenant",
+            Status = ClinicStatus.Active,
             DeactivatedAtUtc = (DateTime?)null,
             DeactivatedByUserId = (Guid?)null,
             CreatedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)

@@ -11,18 +11,12 @@ public sealed class Clinic : AggregateRoot<Guid>, IAuditableEntity
 {
     public const int MaxNameLength = 200;
     public const int MaxAddressLength = 500;
-    public const int MaxSchemaNameLength = 63;
-    public const int MaxMigrationLength = 150;
 
+    public Guid TenantId { get; private init; }
     public string Name { get; private set; }
     public PhoneNumber Phone { get; private set; }
     public string Address { get; private set; }
-    public string SchemaName { get; private init; }
     public ClinicStatus Status { get; private set; }
-    public TenantProvisioningStatus ProvisioningStatus { get; private set; }
-    public TenantSchemaHealthStatus SchemaHealthStatus { get; private set; }
-    public string? CurrentMigration { get; private set; }
-    public DateTime? LastSchemaVerifiedAtUtc { get; private set; }
     public DateTime? DeactivatedAtUtc { get; private set; }
     public Guid? DeactivatedByUserId { get; private set; }
 
@@ -33,20 +27,18 @@ public sealed class Clinic : AggregateRoot<Guid>, IAuditableEntity
 
     private Clinic(
         Guid id,
+        Guid tenantId,
         string name,
         PhoneNumber phone,
         string address,
-        string schemaName,
         TimeProvider clock) : base(clock)
     {
         Id = id;
+        TenantId = tenantId;
         Name = name;
         Phone = phone;
         Address = address;
-        SchemaName = schemaName;
         Status = ClinicStatus.Active;
-        ProvisioningStatus = TenantProvisioningStatus.Pending;
-        SchemaHealthStatus = TenantSchemaHealthStatus.Unknown;
     }
 
     private Clinic()
@@ -54,15 +46,14 @@ public sealed class Clinic : AggregateRoot<Guid>, IAuditableEntity
         Name = null!;
         Phone = null!;
         Address = null!;
-        SchemaName = null!;
     }
 
     public static Result<Clinic> Create(
         Guid id,
+        Guid tenantId,
         string name,
         string phone,
         string address,
-        string schemaName,
         TimeProvider clock)
     {
         if (string.IsNullOrWhiteSpace(name) || name.Length > MaxNameLength)
@@ -81,47 +72,7 @@ public sealed class Clinic : AggregateRoot<Guid>, IAuditableEntity
             return Result.Failure<Clinic>(ClinicErrors.InvalidAddress);
         }
 
-        if (!IsValidSchemaName(schemaName))
-        {
-            return Result.Failure<Clinic>(ClinicErrors.InvalidSchemaName);
-        }
-
-        return new Clinic(id, name, phoneResult.Value, address, schemaName, clock);
-    }
-
-    public Result MarkProvisioning()
-    {
-        ProvisioningStatus = TenantProvisioningStatus.Provisioning;
-        SchemaHealthStatus = TenantSchemaHealthStatus.Unknown;
-        MarkUpdated();
-        return Result.Success();
-    }
-
-    public Result MarkProvisioned(string? currentMigration)
-    {
-        if (currentMigration is not null && currentMigration.Length > MaxMigrationLength)
-        {
-            return Result.Failure(ClinicErrors.InvalidMigration);
-        }
-
-        var now = Clock.GetUtcNow().UtcDateTime;
-        ProvisioningStatus = TenantProvisioningStatus.Provisioned;
-        SchemaHealthStatus = TenantSchemaHealthStatus.Healthy;
-        CurrentMigration = currentMigration;
-        LastSchemaVerifiedAtUtc = now;
-        DeactivatedAtUtc = null;
-        DeactivatedByUserId = null;
-        MarkUpdated();
-        RaiseDomainEvent(new ClinicProvisionedEvent(Id, SchemaName, CurrentMigration, now));
-        return Result.Success();
-    }
-
-    public Result MarkProvisioningFailed(string? reason = null)
-    {
-        ProvisioningStatus = TenantProvisioningStatus.Failed;
-        SchemaHealthStatus = TenantSchemaHealthStatus.Unhealthy;
-        MarkUpdated();
-        return Result.Success();
+        return new Clinic(id, tenantId, name, phoneResult.Value, address, clock);
     }
 
     public Result Activate()
@@ -191,28 +142,6 @@ public sealed class Clinic : AggregateRoot<Guid>, IAuditableEntity
         return Result.Success();
     }
 
-    public Result MarkSchemaHealth(
-        TenantSchemaHealthStatus status,
-        string? currentMigration,
-        DateTime verifiedAtUtc)
-    {
-        if (!Enum.IsDefined(status))
-        {
-            return Result.Failure(ClinicErrors.InvalidSchemaHealth);
-        }
-
-        if (currentMigration is not null && currentMigration.Length > MaxMigrationLength)
-        {
-            return Result.Failure(ClinicErrors.InvalidMigration);
-        }
-
-        SchemaHealthStatus = status;
-        CurrentMigration = currentMigration;
-        LastSchemaVerifiedAtUtc = verifiedAtUtc;
-        MarkUpdated();
-        return Result.Success();
-    }
-
     public Result AddDentist(Guid dentistId)
     {
         if (_clinicDentists.Any(cd => cd.DentistId == dentistId))
@@ -238,14 +167,4 @@ public sealed class Clinic : AggregateRoot<Guid>, IAuditableEntity
         return Result.Success();
     }
 
-    private static bool IsValidSchemaName(string schemaName)
-    {
-        if (string.IsNullOrWhiteSpace(schemaName) || schemaName.Length > MaxSchemaNameLength)
-        {
-            return false;
-        }
-
-        return schemaName.All(c => char.IsAsciiLetterLower(c) || char.IsDigit(c) || c == '_')
-            && char.IsAsciiLetter(schemaName[0]);
-    }
 }

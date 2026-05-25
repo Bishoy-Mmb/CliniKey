@@ -65,7 +65,7 @@ public sealed class TenantConcurrentIsolationTests : IAsyncLifetime
     private AppDbContext CreateContext(string schemaName)
     {
         var tenantContext = new TenantContext();
-        tenantContext.Resolve(Guid.NewGuid(), schemaName, ClinicStatus.Active, TenantSchemaHealthStatus.Healthy);
+        tenantContext.Resolve(Guid.NewGuid(), schemaName, TenantStatus.Active, TenantSchemaHealthStatus.Healthy);
 
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(_postgres.GetConnectionString())

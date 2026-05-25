@@ -7,19 +7,19 @@ internal sealed class TenantContext : ITenantContext, ITenantContextSetter
 {
     public Guid? TenantId { get; private set; }
     public string? SchemaName { get; private set; }
-    public ClinicStatus? ClinicStatus { get; private set; }
+    public TenantStatus? TenantStatus { get; private set; }
     public TenantSchemaHealthStatus? SchemaHealthStatus { get; private set; }
     public bool IsResolved => TenantId.HasValue && !string.IsNullOrWhiteSpace(SchemaName);
 
     public void Resolve(
         Guid tenantId,
         string schemaName,
-        ClinicStatus clinicStatus,
+        TenantStatus tenantStatus,
         TenantSchemaHealthStatus schemaHealthStatus)
     {
         TenantId = tenantId;
         SchemaName = schemaName;
-        ClinicStatus = clinicStatus;
+        TenantStatus = tenantStatus;
         SchemaHealthStatus = schemaHealthStatus;
     }
 
@@ -27,7 +27,7 @@ internal sealed class TenantContext : ITenantContext, ITenantContextSetter
     {
         TenantId = null;
         SchemaName = null;
-        ClinicStatus = null;
+        TenantStatus = null;
         SchemaHealthStatus = null;
     }
 }

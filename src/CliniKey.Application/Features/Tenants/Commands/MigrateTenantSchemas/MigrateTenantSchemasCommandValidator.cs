@@ -6,7 +6,7 @@ public sealed class MigrateTenantSchemasCommandValidator : AbstractValidator<Mig
 {
     public MigrateTenantSchemasCommandValidator()
     {
-        RuleForEach(x => x.ClinicIds)
-            .NotEmpty().When(x => x.ClinicIds is not null);
+        RuleForEach(x => x.TenantIds)
+            .NotEmpty().When(x => x.TenantIds is not null);
     }
 }

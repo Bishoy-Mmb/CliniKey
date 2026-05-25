@@ -6,7 +6,8 @@ namespace CliniKey.Application.Abstractions.Tenancy;
 public sealed record TenantRegistryEntry(
     Guid TenantId,
     string SchemaName,
-    ClinicStatus ClinicStatus,
+    TenantStatus TenantStatus,
+    TenantProvisioningStatus ProvisioningStatus,
     TenantSchemaHealthStatus SchemaHealthStatus,
     string? CurrentMigration);
 

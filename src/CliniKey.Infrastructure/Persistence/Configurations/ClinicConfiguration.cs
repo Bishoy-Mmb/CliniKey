@@ -23,6 +23,10 @@ internal sealed class ClinicConfiguration : IEntityTypeConfiguration<Clinic>
             .HasColumnName("id")
             .ValueGeneratedNever();
 
+        builder.Property(c => c.TenantId)
+            .HasColumnName("tenant_id")
+            .IsRequired();
+
         builder.Property(c => c.Name)
             .HasColumnName("name")
             .IsRequired()
@@ -39,32 +43,10 @@ internal sealed class ClinicConfiguration : IEntityTypeConfiguration<Clinic>
             .IsRequired()
             .HasMaxLength(Clinic.MaxAddressLength);
 
-        builder.Property(c => c.SchemaName)
-            .HasColumnName("schema_name")
-            .IsRequired()
-            .HasMaxLength(Clinic.MaxSchemaNameLength);
-
         builder.Property(c => c.Status)
             .HasColumnName("status")
             .HasConversion<string>()
             .IsRequired();
-
-        builder.Property(c => c.ProvisioningStatus)
-            .HasColumnName("provisioning_status")
-            .HasConversion<string>()
-            .IsRequired();
-
-        builder.Property(c => c.SchemaHealthStatus)
-            .HasColumnName("schema_health_status")
-            .HasConversion<string>()
-            .IsRequired();
-
-        builder.Property(c => c.CurrentMigration)
-            .HasColumnName("current_migration")
-            .HasMaxLength(Clinic.MaxMigrationLength);
-
-        builder.Property(c => c.LastSchemaVerifiedAtUtc)
-            .HasColumnName("last_schema_verified_at_utc");
 
         builder.Property(c => c.DeactivatedAtUtc)
             .HasColumnName("deactivated_at_utc");
@@ -79,7 +61,7 @@ internal sealed class ClinicConfiguration : IEntityTypeConfiguration<Clinic>
         builder.Property(c => c.UpdatedAtUtc)
             .HasColumnName("updated_at_utc");
 
-        builder.HasIndex(c => c.SchemaName).IsUnique();
+        builder.HasIndex(c => c.TenantId);
         builder.HasIndex(c => c.Phone).IsUnique();
     }
 }

@@ -104,7 +104,8 @@ public class TenantResolutionMiddlewareTests
         var entry = new TenantRegistryEntry(
             tenantId,
             "tenant_ab12cd34",
-            ClinicStatus.Active,
+            TenantStatus.Active,
+            TenantProvisioningStatus.Provisioned,
             TenantSchemaHealthStatus.Healthy,
             CurrentMigration: null);
         var context = CreateContext([new Claim("tenant_id", tenantId.ToString())]);
@@ -124,7 +125,7 @@ public class TenantResolutionMiddlewareTests
         _tenantContextSetter.Received(1).Resolve(
             tenantId,
             "tenant_ab12cd34",
-            ClinicStatus.Active,
+            TenantStatus.Active,
             TenantSchemaHealthStatus.Healthy);
     }
 
