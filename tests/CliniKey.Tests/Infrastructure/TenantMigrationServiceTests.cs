@@ -2,6 +2,7 @@ using CliniKey.Application.Abstractions.Tenancy;
 using CliniKey.Domain.Errors;
 using CliniKey.Infrastructure.Persistence;
 using FluentAssertions;
+using Microsoft.Extensions.Options;
 using Npgsql;
 using Testcontainers.PostgreSql;
 
@@ -94,7 +95,9 @@ public sealed class TenantMigrationServiceTests : IAsyncLifetime
 
     private TenantMigrationService CreateService()
     {
-        return new TenantMigrationService(_postgres.GetConnectionString(), _options);
+        return new TenantMigrationService(
+            NpgsqlDataSource.Create(_postgres.GetConnectionString()),
+            Options.Create(_options));
     }
 
     private async Task<bool> TableExistsAsync(string schemaName, string tableName)

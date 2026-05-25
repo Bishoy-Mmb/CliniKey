@@ -7,7 +7,7 @@ using CliniKey.SharedKernel.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
+using Npgsql;
 
 namespace CliniKey.Infrastructure;
 
@@ -18,18 +18,22 @@ public static class DependencyInjection
         var connectionString = configuration.GetConnectionString("Database") 
             ?? throw new ArgumentNullException("Database connection string not found");
 
-        services.Configure<TenancyOptions>(configuration.GetSection(TenancyOptions.SectionName));
-        services.PostConfigure<TenancyOptions>(options => options.ConnectionString = connectionString);
-        services.AddSingleton(sp => sp.GetRequiredService<IOptions<TenancyOptions>>().Value);
+        services
+            .AddOptions<TenancyOptions>()
+            .Bind(configuration.GetSection(TenancyOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services.AddSingleton(_ => NpgsqlDataSource.Create(connectionString));
 
         services.AddScoped<TenantConnectionInterceptor>();
 
         services.AddDbContext<AppDbContext>((sp, options) =>
-            options.UseNpgsql(connectionString)
+            options.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>())
                 .AddInterceptors(sp.GetRequiredService<TenantConnectionInterceptor>()));
 
-        services.AddDbContext<SharedDbContext>(options =>
-            options.UseNpgsql(connectionString));
+        services.AddDbContext<SharedDbContext>((sp, options) =>
+            options.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>()));
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddSingleton(TimeProvider.System);
@@ -37,19 +41,10 @@ public static class DependencyInjection
         services.AddScoped<TenantContext>();
         services.AddScoped<ITenantContext>(sp => sp.GetRequiredService<TenantContext>());
         services.AddScoped<ITenantContextSetter>(sp => sp.GetRequiredService<TenantContext>());
-        services.AddScoped<ITenantRegistry>(sp => new TenantRegistry(
-            connectionString,
-            sp.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>(),
-            sp.GetRequiredService<TenancyOptions>()));
-        services.AddScoped<ITenantMigrationService>(sp => new TenantMigrationService(
-            connectionString,
-            sp.GetRequiredService<TenancyOptions>()));
-        services.AddScoped<ITenantProvisioningService>(sp => new TenantProvisioningService(
-            sp.GetRequiredService<ITenantMigrationService>(),
-            sp.GetRequiredService<SharedDbContext>(),
-            sp.GetRequiredService<TimeProvider>(),
-            sp.GetRequiredService<IOptions<TenancyOptions>>(),
-            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<TenantProvisioningService>>()));
+        services.AddSingleton<ITenantSchemaNameGenerator, TenantSchemaNameGenerator>();
+        services.AddSingleton<ITenantRegistry, TenantRegistry>();
+        services.AddSingleton<ITenantMigrationService, TenantMigrationService>();
+        services.AddScoped<ITenantProvisioningService, TenantProvisioningService>();
         services.AddScoped<IPatientRepository, PatientRepository>();
         services.AddScoped<IAppointmentRepository, AppointmentRepository>();
         services.AddScoped<IDentistRepository, DentistRepository>();
@@ -57,12 +52,10 @@ public static class DependencyInjection
         services.AddScoped<IInvoiceRepository, InvoiceRepository>();
         services.AddScoped<IClinicRepository, ClinicRepository>();
         
-        services.AddScoped<IDbConnectionFactory>(sp => new DbConnectionFactory(
-            connectionString,
-            sp.GetRequiredService<ITenantContext>()));
+        services.AddScoped<IDbConnectionFactory, DbConnectionFactory>();
 
-        services.AddDbContext<Identity.AuthDbContext>(options =>
-            options.UseNpgsql(connectionString));
+        services.AddDbContext<Identity.AuthDbContext>((sp, options) =>
+            options.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>()));
 
         services.AddScoped<Application.Abstractions.Identity.IAuthService, Identity.AuthService>();
         services.AddScoped<Application.Abstractions.Identity.IJwtTokenService, Identity.JwtTokenService>();

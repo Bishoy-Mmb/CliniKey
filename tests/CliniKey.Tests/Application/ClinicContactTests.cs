@@ -103,7 +103,14 @@ public class ClinicContactTests
 
     private Clinic CreateClinic(string name, string phone)
     {
-        var clinic = Clinic.Create(name, phone, "15 Tahrir St", _clock).Value;
+        var clinicId = Guid.NewGuid();
+        var clinic = Clinic.Create(
+            clinicId,
+            name,
+            phone,
+            "15 Tahrir St",
+            $"tenant_{clinicId:N}",
+            _clock).Value;
         clinic.MarkProvisioned("202605230001_InitialTenantOperationalSchema");
         clinic.ClearDomainEvents();
         return clinic;

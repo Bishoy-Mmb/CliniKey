@@ -1,5 +1,6 @@
 using CliniKey.Application.Abstractions.Tenancy;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Options;
 using Npgsql;
 using System.Data.Common;
 
@@ -8,10 +9,17 @@ namespace CliniKey.Infrastructure.Persistence;
 internal sealed class TenantConnectionInterceptor : DbConnectionInterceptor
 {
     private readonly ITenantContext _tenantContext;
+    private readonly TenancyOptions _options;
 
     public TenantConnectionInterceptor(ITenantContext tenantContext)
+        : this(tenantContext, Options.Create(new TenancyOptions()))
+    {
+    }
+
+    public TenantConnectionInterceptor(ITenantContext tenantContext, IOptions<TenancyOptions> options)
     {
         _tenantContext = tenantContext;
+        _options = options.Value;
     }
 
     public override void ConnectionOpened(DbConnection connection, ConnectionEndEventData eventData)
@@ -37,7 +45,7 @@ internal sealed class TenantConnectionInterceptor : DbConnectionInterceptor
         }
 
         using var command = connection.CreateCommand();
-        command.CommandText = $"SET search_path TO {PostgresIdentifier.QuoteSchema(_tenantContext.SchemaName)}, shared, public;";
+        command.CommandText = $"SET search_path TO {PostgresIdentifier.QuoteSchema(_tenantContext.SchemaName)}, {PostgresIdentifier.QuoteSchema(_options.SharedSchema)}, public;";
         command.ExecuteNonQuery();
     }
 
@@ -49,7 +57,7 @@ internal sealed class TenantConnectionInterceptor : DbConnectionInterceptor
         }
 
         await using var command = connection.CreateCommand();
-        command.CommandText = $"SET search_path TO {PostgresIdentifier.QuoteSchema(_tenantContext.SchemaName)}, shared, public;";
+        command.CommandText = $"SET search_path TO {PostgresIdentifier.QuoteSchema(_tenantContext.SchemaName)}, {PostgresIdentifier.QuoteSchema(_options.SharedSchema)}, public;";
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 }

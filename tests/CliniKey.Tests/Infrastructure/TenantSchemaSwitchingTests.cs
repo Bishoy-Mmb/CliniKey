@@ -4,7 +4,9 @@ using CliniKey.Domain.ValueObjects;
 using CliniKey.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
+using Npgsql;
 using Testcontainers.PostgreSql;
 
 namespace CliniKey.Tests.Infrastructure;
@@ -30,7 +32,8 @@ public sealed class TenantSchemaSwitchingTests : IAsyncLifetime
     {
         const string tenantA = "tenant_ef_a";
         const string tenantB = "tenant_ef_b";
-        var migrationService = new TenantMigrationService(_postgres.GetConnectionString());
+        await using var dataSource = NpgsqlDataSource.Create(_postgres.GetConnectionString());
+        var migrationService = new TenantMigrationService(dataSource, Options.Create(new TenancyOptions()));
         (await migrationService.ApplyMigrationsAsync(tenantA)).IsSuccess.Should().BeTrue();
         (await migrationService.ApplyMigrationsAsync(tenantB)).IsSuccess.Should().BeTrue();
 

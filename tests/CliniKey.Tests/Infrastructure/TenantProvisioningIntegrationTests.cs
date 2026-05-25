@@ -35,16 +35,19 @@ public sealed class TenantProvisioningIntegrationTests : IAsyncLifetime
     {
         await using var sharedContext = CreateSharedDbContext();
         await sharedContext.Database.EnsureCreatedAsync();
-        var clinic = Clinic.Create("Cairo Dental Center", "01112345678", "15 Tahrir St", _clock).Value;
+        var clinic = CreateClinic("Cairo Dental Center", "01112345678", "15 Tahrir St");
         sharedContext.Clinics.Add(clinic);
         await sharedContext.SaveChangesAsync();
 
-        var migrationService = new TenantMigrationService(_postgres.GetConnectionString());
+        await using var dataSource = NpgsqlDataSource.Create(_postgres.GetConnectionString());
+        var tenancyOptions = CreateTenancyOptions();
+        var migrationService = new TenantMigrationService(dataSource, tenancyOptions);
         var service = new TenantProvisioningService(
+            dataSource,
             migrationService,
             sharedContext,
             _clock,
-            CreateTenancyOptions(),
+            tenancyOptions,
             NullLogger<TenantProvisioningService>.Instance);
 
         var result = await service.ProvisionAsync(clinic, null);
@@ -60,11 +63,13 @@ public sealed class TenantProvisioningIntegrationTests : IAsyncLifetime
     {
         await using var sharedContext = CreateSharedDbContext();
         await sharedContext.Database.EnsureCreatedAsync();
-        var clinic = Clinic.Create("Alex Dental Center", "01112345679", "10 Sea Rd", _clock).Value;
+        var clinic = CreateClinic("Alex Dental Center", "01112345679", "10 Sea Rd");
         sharedContext.Clinics.Add(clinic);
         await sharedContext.SaveChangesAsync();
 
+        await using var dataSource = NpgsqlDataSource.Create(_postgres.GetConnectionString());
         var service = new TenantProvisioningService(
+            dataSource,
             new FailingTenantMigrationService(),
             sharedContext,
             _clock,
@@ -86,9 +91,21 @@ public sealed class TenantProvisioningIntegrationTests : IAsyncLifetime
         return new SharedDbContext(options);
     }
 
+    private Clinic CreateClinic(string name, string phone, string address)
+    {
+        var clinicId = Guid.NewGuid();
+        return Clinic.Create(
+            clinicId,
+            name,
+            phone,
+            address,
+            $"tenant_{clinicId:N}",
+            _clock).Value;
+    }
+
     private IOptions<TenancyOptions> CreateTenancyOptions()
     {
-        return Options.Create(new TenancyOptions { ConnectionString = _postgres.GetConnectionString() });
+        return Options.Create(new TenancyOptions());
     }
 
     private async Task<bool> SchemaExistsAsync(string schemaName)

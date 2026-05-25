@@ -15,6 +15,7 @@ internal sealed class OnboardClinicCommandHandler : ICommandHandler<OnboardClini
     private readonly IClinicRepository _clinicRepository;
     private readonly ITenantProvisioningService _tenantProvisioningService;
     private readonly ICurrentUserService _currentUserService;
+    private readonly ITenantSchemaNameGenerator _tenantSchemaNameGenerator;
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _clock;
 
@@ -22,12 +23,14 @@ internal sealed class OnboardClinicCommandHandler : ICommandHandler<OnboardClini
         IClinicRepository clinicRepository,
         ITenantProvisioningService tenantProvisioningService,
         ICurrentUserService currentUserService,
+        ITenantSchemaNameGenerator tenantSchemaNameGenerator,
         IUnitOfWork unitOfWork,
         TimeProvider clock)
     {
         _clinicRepository = clinicRepository;
         _tenantProvisioningService = tenantProvisioningService;
         _currentUserService = currentUserService;
+        _tenantSchemaNameGenerator = tenantSchemaNameGenerator;
         _unitOfWork = unitOfWork;
         _clock = clock;
     }
@@ -47,7 +50,9 @@ internal sealed class OnboardClinicCommandHandler : ICommandHandler<OnboardClini
             return Result.Failure<OnboardClinicResponse>(TenantErrors.DuplicatePhone);
         }
 
-        var clinicResult = Clinic.Create(request.Name, request.Phone, request.Address, _clock);
+        var clinicId = Guid.NewGuid();
+        var schemaName = _tenantSchemaNameGenerator.Generate(clinicId);
+        var clinicResult = Clinic.Create(clinicId, request.Name, request.Phone, request.Address, schemaName, _clock);
         if (clinicResult.IsFailure)
         {
             return Result.Failure<OnboardClinicResponse>(clinicResult.Error);

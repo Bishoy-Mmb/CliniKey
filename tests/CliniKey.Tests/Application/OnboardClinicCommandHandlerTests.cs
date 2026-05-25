@@ -18,6 +18,7 @@ public class OnboardClinicCommandHandlerTests
     private readonly IClinicRepository _clinicRepository;
     private readonly ITenantProvisioningService _tenantProvisioningService;
     private readonly ICurrentUserService _currentUserService;
+    private readonly ITenantSchemaNameGenerator _tenantSchemaNameGenerator;
     private readonly IUnitOfWork _unitOfWork;
     private readonly FakeTimeProvider _clock;
     private readonly OnboardClinicCommandHandler _handler;
@@ -27,12 +28,16 @@ public class OnboardClinicCommandHandlerTests
         _clinicRepository = Substitute.For<IClinicRepository>();
         _tenantProvisioningService = Substitute.For<ITenantProvisioningService>();
         _currentUserService = Substitute.For<ICurrentUserService>();
+        _tenantSchemaNameGenerator = Substitute.For<ITenantSchemaNameGenerator>();
         _unitOfWork = Substitute.For<IUnitOfWork>();
         _clock = new FakeTimeProvider(new DateTimeOffset(2026, 5, 23, 10, 0, 0, TimeSpan.Zero));
+        _tenantSchemaNameGenerator.Generate(Arg.Any<Guid>())
+            .Returns(call => $"tenant_{call.Arg<Guid>().ToString("N")}");
         _handler = new OnboardClinicCommandHandler(
             _clinicRepository,
             _tenantProvisioningService,
             _currentUserService,
+            _tenantSchemaNameGenerator,
             _unitOfWork,
             _clock);
     }

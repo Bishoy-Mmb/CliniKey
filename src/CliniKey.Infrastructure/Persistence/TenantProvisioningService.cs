@@ -11,6 +11,7 @@ namespace CliniKey.Infrastructure.Persistence;
 
 internal sealed class TenantProvisioningService : ITenantProvisioningService
 {
+    private readonly NpgsqlDataSource _dataSource;
     private readonly ITenantMigrationService _tenantMigrationService;
     // Must be registered as Scoped - never Singleton.
     // Captive dependency risk if lifetime is widened.
@@ -20,12 +21,14 @@ internal sealed class TenantProvisioningService : ITenantProvisioningService
     private readonly ILogger<TenantProvisioningService> _logger;
 
     public TenantProvisioningService(
+        NpgsqlDataSource dataSource,
         ITenantMigrationService tenantMigrationService,
         SharedDbContext sharedDbContext,
         TimeProvider clock,
         IOptions<TenancyOptions> options,
         ILogger<TenantProvisioningService> logger)
     {
+        _dataSource = dataSource;
         _tenantMigrationService = tenantMigrationService;
         _sharedDbContext = sharedDbContext;
         _clock = clock;
@@ -40,8 +43,7 @@ internal sealed class TenantProvisioningService : ITenantProvisioningService
     {
         try
         {
-            await using var connection = new NpgsqlConnection(_options.ConnectionString);
-            await connection.OpenAsync(cancellationToken);
+            await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
             await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
             // Transaction-scoped advisory lock - releases automatically on commit or rollback.
@@ -113,8 +115,7 @@ internal sealed class TenantProvisioningService : ITenantProvisioningService
     {
         try
         {
-            await using var connection = new NpgsqlConnection(_options.ConnectionString);
-            await connection.OpenAsync(cancellationToken);
+            await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
             var schema = PostgresIdentifier.QuoteSchema(schemaName);
             await using var command = new NpgsqlCommand($"DROP SCHEMA IF EXISTS {schema} CASCADE;", connection);
             await command.ExecuteNonQueryAsync(cancellationToken);

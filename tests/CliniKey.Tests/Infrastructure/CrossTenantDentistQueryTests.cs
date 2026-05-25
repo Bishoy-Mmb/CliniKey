@@ -6,6 +6,7 @@ using FluentAssertions;
 using Npgsql;
 using Dapper;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Testcontainers.PostgreSql;
 
@@ -30,6 +31,8 @@ public sealed class CrossTenantDentistQueryTests : IAsyncLifetime
     [Fact]
     public async Task DentistRepository_ReturnsSharedDentistUnderDifferentTenantSearchPaths()
     {
+        await using var dataSource = NpgsqlDataSource.Create(_postgres.GetConnectionString());
+
         await using (var sharedContext = CreateSharedContext())
         {
             await sharedContext.Database.EnsureCreatedAsync();
@@ -37,8 +40,9 @@ public sealed class CrossTenantDentistQueryTests : IAsyncLifetime
             sharedContext.Dentists.Add(dentist);
             await sharedContext.SaveChangesAsync();
 
-            await new TenantMigrationService(_postgres.GetConnectionString()).ApplyMigrationsAsync("tenant_shared_a");
-            await new TenantMigrationService(_postgres.GetConnectionString()).ApplyMigrationsAsync("tenant_shared_b");
+            var migrationService = new TenantMigrationService(dataSource, Options.Create(new TenancyOptions()));
+            await migrationService.ApplyMigrationsAsync("tenant_shared_a");
+            await migrationService.ApplyMigrationsAsync("tenant_shared_b");
 
             await using var tenantAContext = CreateAppContext("tenant_shared_a");
             await using var tenantBContext = CreateAppContext("tenant_shared_b");
@@ -61,17 +65,21 @@ public sealed class CrossTenantDentistQueryTests : IAsyncLifetime
         await using (var sharedContext = CreateSharedContext())
         {
             await sharedContext.Database.EnsureCreatedAsync();
+            var clinicId = Guid.NewGuid();
             var clinic = Clinic.Create(
+                clinicId,
                 "Invite Clinic",
                 "01111111111",
                 "15 Tahrir St",
+                $"tenant_{clinicId:N}",
                 _clock).Value;
             schemaName = clinic.SchemaName;
             sharedContext.Clinics.Add(clinic);
             await sharedContext.SaveChangesAsync();
         }
 
-        await new TenantMigrationService(_postgres.GetConnectionString()).ApplyMigrationsAsync(schemaName);
+        await using var dataSource = NpgsqlDataSource.Create(_postgres.GetConnectionString());
+        await new TenantMigrationService(dataSource, Options.Create(new TenancyOptions())).ApplyMigrationsAsync(schemaName);
 
         await using (var tenantContext = CreateAppContext(schemaName))
         {

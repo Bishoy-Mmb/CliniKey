@@ -6,9 +6,16 @@ namespace CliniKey.Infrastructure.Persistence.Configurations;
 
 internal sealed class TenantProvisioningAuditLogConfiguration : IEntityTypeConfiguration<TenantProvisioningAuditLog>
 {
+    private readonly string _sharedSchema;
+
+    public TenantProvisioningAuditLogConfiguration(string sharedSchema = TenancyOptions.DefaultSharedSchema)
+    {
+        _sharedSchema = sharedSchema;
+    }
+
     public void Configure(EntityTypeBuilder<TenantProvisioningAuditLog> builder)
     {
-        builder.ToTable("tenant_provisioning_audit_logs", "shared");
+        builder.ToTable("tenant_provisioning_audit_logs", _sharedSchema);
 
         builder.HasKey(log => log.Id);
 

@@ -6,9 +6,16 @@ namespace CliniKey.Infrastructure.Persistence.Configurations;
 
 internal sealed class ClinicConfiguration : IEntityTypeConfiguration<Clinic>
 {
+    private readonly string _sharedSchema;
+
+    public ClinicConfiguration(string sharedSchema = TenancyOptions.DefaultSharedSchema)
+    {
+        _sharedSchema = sharedSchema;
+    }
+
     public void Configure(EntityTypeBuilder<Clinic> builder)
     {
-        builder.ToTable("clinics", "shared");
+        builder.ToTable("clinics", _sharedSchema);
 
         builder.HasKey(c => c.Id);
 

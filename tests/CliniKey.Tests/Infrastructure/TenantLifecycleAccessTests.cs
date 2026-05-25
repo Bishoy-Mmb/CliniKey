@@ -5,7 +5,9 @@ using CliniKey.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
+using Npgsql;
 using Testcontainers.PostgreSql;
 
 namespace CliniKey.Tests.Infrastructure;
@@ -31,10 +33,13 @@ public sealed class TenantLifecycleAccessTests : IAsyncLifetime
     {
         await using var sharedContext = CreateSharedContext();
         await sharedContext.Database.EnsureCreatedAsync();
+        var clinicId = Guid.NewGuid();
         var clinic = Clinic.Create(
+            clinicId,
             "Inactive Clinic",
             "01122222222",
             "15 Tahrir St",
+            $"tenant_{clinicId:N}",
             _clock).Value;
         clinic.MarkProvisioned("202605230001_InitialTenantOperationalSchema");
         clinic.Deactivate(Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"));
@@ -42,10 +47,11 @@ public sealed class TenantLifecycleAccessTests : IAsyncLifetime
         await sharedContext.SaveChangesAsync();
 
         using var cache = new MemoryCache(new MemoryCacheOptions());
+        await using var dataSource = NpgsqlDataSource.Create(_postgres.GetConnectionString());
         var registry = new TenantRegistry(
-            _postgres.GetConnectionString(),
+            dataSource,
             cache,
-            new TenancyOptions { TenantRegistryCacheSeconds = 5 });
+            Options.Create(new TenancyOptions { TenantRegistryCacheSeconds = 5 }));
 
         var result = await registry.ResolveAsync(clinic.Id);
 

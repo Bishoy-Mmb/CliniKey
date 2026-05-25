@@ -4,6 +4,7 @@ using CliniKey.Domain.Errors;
 using CliniKey.SharedKernel.Primitives;
 using Dapper;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
 using Npgsql;
 
 namespace CliniKey.Infrastructure.Persistence;
@@ -12,15 +13,15 @@ internal sealed class TenantRegistry : ITenantRegistry
 {
     private static readonly TimeSpan MinimumCacheDuration = TimeSpan.FromSeconds(1);
 
-    private readonly string _connectionString;
+    private readonly NpgsqlDataSource _dataSource;
     private readonly IMemoryCache _cache;
     private readonly TenancyOptions _options;
 
-    public TenantRegistry(string connectionString, IMemoryCache cache, TenancyOptions options)
+    public TenantRegistry(NpgsqlDataSource dataSource, IMemoryCache cache, IOptions<TenancyOptions> options)
     {
-        _connectionString = connectionString;
+        _dataSource = dataSource;
         _cache = cache;
-        _options = options;
+        _options = options.Value;
     }
 
     public async Task<Result<TenantRegistryEntry>> ResolveAsync(
@@ -33,17 +34,18 @@ internal sealed class TenantRegistry : ITenantRegistry
             return Validate(cached);
         }
 
-        await using var connection = new NpgsqlConnection(_connectionString);
+        var sharedSchema = PostgresIdentifier.QuoteSchema(_options.SharedSchema);
+        await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
         var clinic = await connection.QueryFirstOrDefaultAsync<TenantRegistryRow>(
             new CommandDefinition(
-                """
+                $"""
                 SELECT
                     id AS TenantId,
                     schema_name AS SchemaName,
                     status AS ClinicStatus,
                     schema_health_status AS SchemaHealthStatus,
                     current_migration AS CurrentMigration
-                FROM shared.clinics
+                FROM {sharedSchema}.clinics
                 WHERE id = @TenantId
                 """,
                 new { TenantId = tenantId },

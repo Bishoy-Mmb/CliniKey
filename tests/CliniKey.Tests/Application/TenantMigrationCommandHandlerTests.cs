@@ -137,7 +137,14 @@ public class TenantMigrationCommandHandlerTests
 
     private Clinic CreateClinic(string name)
     {
-        var clinic = Clinic.Create(name, "01112345678", "15 Tahrir St", _clock).Value;
+        var clinicId = Guid.NewGuid();
+        var clinic = Clinic.Create(
+            clinicId,
+            name,
+            "01112345678",
+            "15 Tahrir St",
+            $"tenant_{clinicId:N}",
+            _clock).Value;
         clinic.MarkProvisioned("202605180001_PreviousMigration");
         clinic.ClearDomainEvents();
         return clinic;

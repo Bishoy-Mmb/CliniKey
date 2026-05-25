@@ -1,6 +1,7 @@
 using CliniKey.Application.Abstractions.Tenancy;
 using CliniKey.Domain.Errors;
 using CliniKey.SharedKernel.Primitives;
+using Microsoft.Extensions.Options;
 using Npgsql;
 
 namespace CliniKey.Infrastructure.Persistence;
@@ -9,13 +10,13 @@ internal sealed class TenantMigrationService : ITenantMigrationService
 {
     public const string BaselineMigration = "202605230001_InitialTenantOperationalSchema";
 
-    private readonly string _connectionString;
+    private readonly NpgsqlDataSource _dataSource;
     private readonly TenancyOptions _options;
 
-    public TenantMigrationService(string connectionString, TenancyOptions? options = null)
+    public TenantMigrationService(NpgsqlDataSource dataSource, IOptions<TenancyOptions> options)
     {
-        _connectionString = connectionString;
-        _options = options ?? new TenancyOptions();
+        _dataSource = dataSource;
+        _options = options.Value;
     }
 
     public string ExpectedMigration => BaselineMigration;
@@ -26,8 +27,7 @@ internal sealed class TenantMigrationService : ITenantMigrationService
     {
         try
         {
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync(cancellationToken);
+            await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
 
             await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
             var schema = PostgresIdentifier.QuoteSchema(schemaName);
@@ -174,8 +174,7 @@ internal sealed class TenantMigrationService : ITenantMigrationService
         IReadOnlyCollection<TenantMigrationTarget> targets,
         CancellationToken cancellationToken = default)
     {
-        await using var lockConnection = new NpgsqlConnection(_connectionString);
-        await lockConnection.OpenAsync(cancellationToken);
+        await using var lockConnection = await _dataSource.OpenConnectionAsync(cancellationToken);
         await using var lockTransaction = await lockConnection.BeginTransactionAsync(cancellationToken);
 
         if (!await TryAcquireMigrationLockAsync(lockConnection, lockTransaction, cancellationToken))
@@ -209,8 +208,7 @@ internal sealed class TenantMigrationService : ITenantMigrationService
     {
         try
         {
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync(cancellationToken);
+            await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
 
             await using var tableCommand = new NpgsqlCommand(
                 """

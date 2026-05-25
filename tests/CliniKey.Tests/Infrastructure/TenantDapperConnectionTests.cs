@@ -1,6 +1,8 @@
 using CliniKey.Domain.Enums;
 using CliniKey.Infrastructure.Persistence;
 using FluentAssertions;
+using Microsoft.Extensions.Options;
+using Npgsql;
 using Testcontainers.PostgreSql;
 
 namespace CliniKey.Tests.Infrastructure;
@@ -24,11 +26,13 @@ public sealed class TenantDapperConnectionTests : IAsyncLifetime
     public async Task CreateTenantConnection_SetsSearchPathForResolvedTenant()
     {
         const string schemaName = "tenant_dapper_a";
-        var migrationService = new TenantMigrationService(_postgres.GetConnectionString());
+        await using var dataSource = NpgsqlDataSource.Create(_postgres.GetConnectionString());
+        var tenancyOptions = Options.Create(new TenancyOptions());
+        var migrationService = new TenantMigrationService(dataSource, tenancyOptions);
         (await migrationService.ApplyMigrationsAsync(schemaName)).IsSuccess.Should().BeTrue();
         var tenantContext = new TenantContext();
         tenantContext.Resolve(Guid.NewGuid(), schemaName, ClinicStatus.Active, TenantSchemaHealthStatus.Healthy);
-        var factory = new DbConnectionFactory(_postgres.GetConnectionString(), tenantContext);
+        var factory = new DbConnectionFactory(dataSource, tenantContext, tenancyOptions);
 
         using var connection = factory.CreateTenantConnection();
         using var command = connection.CreateCommand();

@@ -4,7 +4,9 @@ using CliniKey.Domain.ValueObjects;
 using CliniKey.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
+using Npgsql;
 using Testcontainers.PostgreSql;
 
 namespace CliniKey.Tests.Infrastructure;
@@ -31,7 +33,8 @@ public sealed class TenantConcurrentIsolationTests : IAsyncLifetime
         var schemas = Enumerable.Range(0, 10)
             .Select(i => $"tenant_{i:00}")
             .ToArray();
-        var migrationService = new TenantMigrationService(_postgres.GetConnectionString());
+        await using var dataSource = NpgsqlDataSource.Create(_postgres.GetConnectionString());
+        var migrationService = new TenantMigrationService(dataSource, Options.Create(new TenancyOptions()));
 
         foreach (var schema in schemas)
         {
