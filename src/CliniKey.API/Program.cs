@@ -2,6 +2,7 @@ using CliniKey.API.Middleware;
 using CliniKey.Application;
 using CliniKey.Application.Constants;
 using CliniKey.Infrastructure;
+using CliniKey.API.OpenApi;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -14,7 +15,12 @@ using Scalar.AspNetCore;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+{
+    var bearerSecuritySchemeTransformer = new BearerSecuritySchemeTransformer();
+    options.AddDocumentTransformer(bearerSecuritySchemeTransformer);
+    options.AddOperationTransformer(bearerSecuritySchemeTransformer);
+});
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -91,24 +97,22 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
-{
-    var roleManager = scope.ServiceProvider
-        .GetRequiredService<RoleManager<IdentityRole<Guid>>>();
-    string[] roles = [Roles.PlatformOperator, Roles.ClinicAdmin, Roles.Dentist, Roles.Receptionist];
-    foreach (var role in roles)
-    {
-        if (!await roleManager.RoleExistsAsync(role))
-        {
-            await roleManager.CreateAsync(new IdentityRole<Guid>(role));
-        }
-    }
-}
-
 if (app.Environment.IsDevelopment())
 {
+    await IdentitySeeder.SeedDevelopmentAsync(app.Services, app.Configuration);
     app.MapOpenApi();
-    app.MapScalarApiReference();
+    app.MapScalarApiReference(options =>
+    {
+        options.AddPreferredSecuritySchemes([JwtBearerDefaults.AuthenticationScheme]);
+        options.EnablePersistentAuthentication();
+    });
+}
+else
+{
+    using var scope = app.Services.CreateScope();
+    var roleManager = scope.ServiceProvider
+        .GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+    await IdentitySeeder.SeedRolesAsync(roleManager);
 }
 
 app.UseMiddleware<GlobalExceptionMiddleware>();
