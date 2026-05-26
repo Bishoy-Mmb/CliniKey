@@ -19,7 +19,7 @@ internal sealed class GetAppointmentByIdQueryHandler : IQueryHandler<GetAppointm
 
     public async Task<Result<AppointmentResponse>> Handle(GetAppointmentByIdQuery request, CancellationToken cancellationToken)
     {
-        using IDbConnection connection = _dbConnectionFactory.CreateConnection();
+        using IDbConnection connection = _dbConnectionFactory.CreateTenantConnection();
 
         const string sql = @"
             SELECT

@@ -17,7 +17,7 @@ internal sealed class ListPatientsQueryHandler : IQueryHandler<ListPatientsQuery
 
     public async Task<Result<IReadOnlyList<PatientResponse>>> Handle(ListPatientsQuery request, CancellationToken cancellationToken)
     {
-        using var connection = _dbConnectionFactory.CreateConnection();
+        using var connection = _dbConnectionFactory.CreateTenantConnection();
 
         var sql = """
             SELECT

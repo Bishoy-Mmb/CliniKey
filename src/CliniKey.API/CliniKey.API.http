@@ -1,6 +1,95 @@
 @CliniKey.API_HostAddress = http://localhost:5041
+@PlatformOperatorEmail = operator@clinikey.local
+@PlatformOperatorPassword = CliniKeyDev#12345
+@PlatformOperatorToken = replace-me
+@TenantUserToken = replace-me
+@TenantId = 00000000-0000-0000-0000-000000000000
+@ClinicId = 00000000-0000-0000-0000-000000000000
 
-GET {{CliniKey.API_HostAddress}}/weatherforecast/
+POST {{CliniKey.API_HostAddress}}/api/v1/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "{{PlatformOperatorEmail}}",
+  "password": "{{PlatformOperatorPassword}}"
+}
+
+###
+
+POST {{CliniKey.API_HostAddress}}/api/v1/tenants
+Authorization: Bearer {{PlatformOperatorToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Cairo Dental Center",
+  "phone": "01112345678",
+  "address": "15 Tahrir St, Cairo"
+}
+
+###
+
+GET {{CliniKey.API_HostAddress}}/api/v1/tenants
+Authorization: Bearer {{PlatformOperatorToken}}
+Accept: application/json
+
+###
+
+GET {{CliniKey.API_HostAddress}}/api/v1/tenants/{{TenantId}}
+Authorization: Bearer {{PlatformOperatorToken}}
+Accept: application/json
+
+###
+
+PUT {{CliniKey.API_HostAddress}}/api/v1/tenants/{{TenantId}}/clinics/{{ClinicId}}/contact
+Authorization: Bearer {{PlatformOperatorToken}}
+Content-Type: application/json
+
+{
+  "phone": "01198765432",
+  "address": "22 Nile Corniche, Cairo"
+}
+
+###
+
+POST {{CliniKey.API_HostAddress}}/api/v1/tenants/{{TenantId}}/deactivate
+Authorization: Bearer {{PlatformOperatorToken}}
+Content-Type: application/json
+
+{
+  "reason": "Temporary closure"
+}
+
+###
+
+POST {{CliniKey.API_HostAddress}}/api/v1/tenants/{{TenantId}}/activate
+Authorization: Bearer {{PlatformOperatorToken}}
+
+###
+
+POST {{CliniKey.API_HostAddress}}/api/v1/tenants/migrations/apply
+Authorization: Bearer {{PlatformOperatorToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "includeInactive": true,
+  "tenantIds": [
+    "{{TenantId}}"
+  ]
+}
+
+###
+
+GET {{CliniKey.API_HostAddress}}/api/v1/tenants/migrations/status
+Authorization: Bearer {{PlatformOperatorToken}}
+Accept: application/json
+
+###
+
+GET {{CliniKey.API_HostAddress}}/api/v1/patients
+Authorization: Bearer {{TenantUserToken}}
 Accept: application/json
 
 ###

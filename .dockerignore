@@ -1,0 +1,17 @@
+bin/
+obj/
+.git/
+.vs/
+.idea/
+Dockerfile*
+.dockerignore
+*.log
+*.log*
+.env
+.env.*
+coverage/
+TestResults/
+artifacts/
+publish/
+docs/
+specs/

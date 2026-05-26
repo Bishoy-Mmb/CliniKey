@@ -14,7 +14,7 @@ public sealed class TenantIsolationTests : IAsyncLifetime
 {
     private readonly FakeTimeProvider _clock;
     private readonly DateTimeOffset _fixedTime = new(2026, 5, 21, 10, 0, 0, TimeSpan.Zero);
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine")
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17-alpine")
         .Build();
 
     public TenantIsolationTests()
@@ -67,6 +67,10 @@ public sealed class TenantIsolationTests : IAsyncLifetime
         // Generate and execute DDL to create tables in tenant A schema
         var ddl = contextA.Database.GenerateCreateScript();
         await contextA.Database.ExecuteSqlRawAsync(ddl);
+        var tenantOnlyDdl = string.Join(
+            ';',
+            ddl.Split(';', StringSplitOptions.RemoveEmptyEntries)
+                .Where(statement => !statement.Contains("shared.", StringComparison.OrdinalIgnoreCase))) + ';';
 
         var name = PatientName.Create("Ahmed", "Hassan").Value;
         var phone = PhoneNumber.Create("01012345678").Value;
@@ -80,8 +84,8 @@ public sealed class TenantIsolationTests : IAsyncLifetime
 
         await using var contextB = CreateDbContext(tenantB);
 
-        // Execute the same DDL to create tables in tenant B schema
-        await contextB.Database.ExecuteSqlRawAsync(ddl);
+        // Shared tables are database-wide; only tenant-scoped tables are recreated per schema.
+        await contextB.Database.ExecuteSqlRawAsync(tenantOnlyDdl);
 
         var patientsInB = await contextB.Patients.AsNoTracking().ToListAsync();
         patientsInB.Should().BeEmpty("tenant B must not see tenant A data");

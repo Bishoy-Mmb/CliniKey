@@ -6,6 +6,7 @@ using CliniKey.Application.DTOs;
 using CliniKey.Application.Constants;
 using CliniKey.Application.Features.Auth;
 using CliniKey.Application.Features.Auth.Queries.GetUserById;
+using CliniKey.Domain.Errors;
 using CliniKey.SharedKernel.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,6 +21,7 @@ internal sealed class AuthService : IAuthService
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IClinicRepository _clinicRepository;
+    private readonly ITenantRepository _tenantRepository;
     private readonly IJwtTokenService _jwtTokenService;
     private readonly AuthDbContext _authDbContext;
     private readonly ICurrentUserService _currentUserService;
@@ -31,6 +33,7 @@ internal sealed class AuthService : IAuthService
     public AuthService(
         UserManager<ApplicationUser> userManager,
         IClinicRepository clinicRepository,
+        ITenantRepository tenantRepository,
         IJwtTokenService jwtTokenService,
         AuthDbContext authDbContext,
         ICurrentUserService currentUserService,
@@ -41,6 +44,7 @@ internal sealed class AuthService : IAuthService
     {
         _userManager = userManager;
         _clinicRepository = clinicRepository;
+        _tenantRepository = tenantRepository;
         _jwtTokenService = jwtTokenService;
         _authDbContext = authDbContext;
         _currentUserService = currentUserService;
@@ -64,6 +68,12 @@ internal sealed class AuthService : IAuthService
             return Result.Failure<Guid>(Error.NotFound("Clinic.NotFound", $"The clinic with ID '{clinicId}' was not found."));
         }
 
+        var tenant = await _tenantRepository.GetByIdAsync(clinic.TenantId, cancellationToken);
+        if (tenant is null)
+        {
+            return Result.Failure<Guid>(TenantErrors.NotFound);
+        }
+
         var existingUser = await _userManager.FindByEmailAsync(email);
         if (existingUser is not null)
         {
@@ -75,7 +85,7 @@ internal sealed class AuthService : IAuthService
             UserName = email,
             Email = email,
             FullName = fullName,
-            TenantId = clinicId,
+            TenantId = tenant.Id,
             IsActive = true
         };
         user.InitializeCreatedAt(_clock.GetUtcNow().UtcDateTime);
@@ -117,8 +127,8 @@ internal sealed class AuthService : IAuthService
             return Result.Failure<TokenResponse>(AuthErrors.InvalidCredentials);
         }
 
-        var clinic = await _clinicRepository.GetByIdAsync(user.TenantId, cancellationToken);
-        if (clinic is null || !clinic.IsActive)
+        var tenant = await _tenantRepository.GetByIdAsync(user.TenantId, cancellationToken);
+        if (tenant is null || !tenant.IsActive)
         {
             return Result.Failure<TokenResponse>(AuthErrors.ClinicDeactivated);
         }
@@ -172,7 +182,7 @@ internal sealed class AuthService : IAuthService
             var dentist = dentistResult.Value;
             _dentistRepository.Add(dentist);
             
-            var clinic = await _clinicRepository.GetByIdAsync(tenantId, cancellationToken);
+            var clinic = await _clinicRepository.GetPrimaryByTenantIdAsync(tenantId, cancellationToken);
             if (clinic is not null)
             {
                 clinic.AddDentist(dentist.Id);
