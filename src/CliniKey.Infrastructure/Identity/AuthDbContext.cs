@@ -1,4 +1,4 @@
-using System.Reflection;
+using CliniKey.Infrastructure.Identity.Configurations;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -19,7 +19,7 @@ public sealed class AuthDbContext : IdentityDbContext<ApplicationUser, IdentityR
 
         builder.HasDefaultSchema("public");
 
-        builder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly(), 
-            t => t.Namespace != null && t.Namespace.Contains("Identity.Configurations"));
+        builder.ApplyConfiguration(new ApplicationUserConfiguration());
+        builder.ApplyConfiguration(new RefreshTokenConfiguration());
     }
 }
