@@ -45,6 +45,15 @@ Development may enable startup tenant migration:
 
 ## Database Migrations
 
+Apply auth migrations first so Identity roles and users can be stored in `public`:
+
+```bash
+dotnet ef database update \
+  --project src/CliniKey.Infrastructure \
+  --startup-project src/CliniKey.API \
+  --context AuthDbContext
+```
+
 Generate shared-schema migrations for the tenant registry, clinic branches, and cross-tenant tables:
 
 ```bash
@@ -78,12 +87,57 @@ Tenant migrations are applied by the provisioning service for new schemas and by
 
 ---
 
+## Development Platform Operator
+
+In Development, API startup creates a local platform operator if it does not already exist:
+
+```text
+email: operator@clinikey.local
+password: CliniKeyDev#12345
+```
+
+The user is assigned to the seeded development tenant:
+
+```text
+11111111-1111-1111-1111-111111111111
+```
+
+Override the defaults with configuration or environment variables:
+
+```json
+{
+  "DevelopmentSeed": {
+    "PlatformOperator": {
+      "Email": "operator@clinikey.local",
+      "Password": "CliniKeyDev#12345",
+      "FullName": "Development Platform Operator"
+    }
+  }
+}
+```
+
+After the API starts, log in at `POST /api/v1/auth/login` and use the returned
+`accessToken` as the platform operator token.
+
+---
+
 ## Manual Flow
 
 Start the API:
 
 ```bash
 dotnet run --project src/CliniKey.API
+```
+
+Log in as the development platform operator:
+
+```bash
+curl -X POST http://localhost:5000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "operator@clinikey.local",
+    "password": "CliniKeyDev#12345"
+  }'
 ```
 
 Onboard a clinic:

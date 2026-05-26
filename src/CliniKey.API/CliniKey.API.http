@@ -1,9 +1,23 @@
 @CliniKey.API_HostAddress = http://localhost:5041
+@PlatformOperatorEmail = operator@clinikey.local
+@PlatformOperatorPassword = CliniKeyDev#12345
 @PlatformOperatorToken = replace-me
 @TenantUserToken = replace-me
+@TenantId = 00000000-0000-0000-0000-000000000000
 @ClinicId = 00000000-0000-0000-0000-000000000000
 
-POST {{CliniKey.API_HostAddress}}/api/v1/tenants/clinics
+POST {{CliniKey.API_HostAddress}}/api/v1/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "{{PlatformOperatorEmail}}",
+  "password": "{{PlatformOperatorPassword}}"
+}
+
+###
+
+POST {{CliniKey.API_HostAddress}}/api/v1/tenants
 Authorization: Bearer {{PlatformOperatorToken}}
 Content-Type: application/json
 Accept: application/json
@@ -16,19 +30,19 @@ Accept: application/json
 
 ###
 
-GET {{CliniKey.API_HostAddress}}/api/v1/tenants/clinics
+GET {{CliniKey.API_HostAddress}}/api/v1/tenants
 Authorization: Bearer {{PlatformOperatorToken}}
 Accept: application/json
 
 ###
 
-GET {{CliniKey.API_HostAddress}}/api/v1/tenants/clinics/{{ClinicId}}
+GET {{CliniKey.API_HostAddress}}/api/v1/tenants/{{TenantId}}
 Authorization: Bearer {{PlatformOperatorToken}}
 Accept: application/json
 
 ###
 
-PUT {{CliniKey.API_HostAddress}}/api/v1/tenants/clinics/{{ClinicId}}/contact
+PUT {{CliniKey.API_HostAddress}}/api/v1/tenants/{{TenantId}}/clinics/{{ClinicId}}/contact
 Authorization: Bearer {{PlatformOperatorToken}}
 Content-Type: application/json
 
@@ -39,7 +53,7 @@ Content-Type: application/json
 
 ###
 
-POST {{CliniKey.API_HostAddress}}/api/v1/tenants/clinics/{{ClinicId}}/deactivate
+POST {{CliniKey.API_HostAddress}}/api/v1/tenants/{{TenantId}}/deactivate
 Authorization: Bearer {{PlatformOperatorToken}}
 Content-Type: application/json
 
@@ -49,7 +63,7 @@ Content-Type: application/json
 
 ###
 
-POST {{CliniKey.API_HostAddress}}/api/v1/tenants/clinics/{{ClinicId}}/activate
+POST {{CliniKey.API_HostAddress}}/api/v1/tenants/{{TenantId}}/activate
 Authorization: Bearer {{PlatformOperatorToken}}
 
 ###
@@ -61,8 +75,8 @@ Accept: application/json
 
 {
   "includeInactive": true,
-  "clinicIds": [
-    "{{ClinicId}}"
+  "tenantIds": [
+    "{{TenantId}}"
   ]
 }
 

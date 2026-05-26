@@ -199,7 +199,7 @@
 - [X] T073 Verify generated EF Core migrations do not create operational tables in `public` or `shared` in `src/CliniKey.Infrastructure/Persistence/Migrations/`
 - [X] T074 Run `dotnet build CliniKey.slnx` and fix build errors
 - [X] T075 Run `dotnet test` and fix failing tests
-- [ ] T076 Run the quickstart flow from `specs/003-tenant-provisioning/quickstart.md`
+- [X] T076 Run the quickstart flow from `specs/003-tenant-provisioning/quickstart.md`
 
 ---
 
