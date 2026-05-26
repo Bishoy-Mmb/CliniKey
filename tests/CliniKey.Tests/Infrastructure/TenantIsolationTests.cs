@@ -14,7 +14,7 @@ public sealed class TenantIsolationTests : IAsyncLifetime
 {
     private readonly FakeTimeProvider _clock;
     private readonly DateTimeOffset _fixedTime = new(2026, 5, 21, 10, 0, 0, TimeSpan.Zero);
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine")
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17-alpine")
         .Build();
 
     public TenantIsolationTests()

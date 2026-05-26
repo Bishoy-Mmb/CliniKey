@@ -10,7 +10,7 @@ namespace CliniKey.Tests.Infrastructure;
 [Trait("Category", "Integration")]
 public sealed class TenantDapperConnectionTests : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine").Build();
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17-alpine").Build();
 
     public async Task InitializeAsync()
     {

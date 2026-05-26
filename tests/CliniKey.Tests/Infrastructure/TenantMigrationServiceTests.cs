@@ -11,7 +11,7 @@ namespace CliniKey.Tests.Infrastructure;
 [Trait("Category", "Integration")]
 public sealed class TenantMigrationServiceTests : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine").Build();
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17-alpine").Build();
     private readonly TenancyOptions _options = new() { ProvisioningLockKey = 424242 };
 
     public async Task InitializeAsync()

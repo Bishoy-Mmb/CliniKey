@@ -15,7 +15,7 @@ namespace CliniKey.Tests.Infrastructure;
 [Trait("Category", "Integration")]
 public sealed class TenantLifecycleAccessTests : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine").Build();
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17-alpine").Build();
     private readonly FakeTimeProvider _clock = new(new DateTimeOffset(2026, 5, 23, 10, 0, 0, TimeSpan.Zero));
 
     public async Task InitializeAsync()
